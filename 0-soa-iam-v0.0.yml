@@ -1,0 +1,149 @@
+#####################################################################################################
+# This CFN template deploys IAM resources for soa app
+#
+#    Pre-requisites
+#      None
+#
+#    Provisions:
+#     Role                - ec2 Instance role for ssm/s3 access
+#     Service Linked Role - autoscaling service linked role 
+# 
+#    Provision Time:  5 mins
+# 
+#    Deployment Instructions:
+#     NONE
+# 
+#####################################################################################################
+#      DATE     #    MODIFIED BY     #                      DESCRIPTION
+#####################################################################################################
+#  09/21/2020   # AWS PS             #  Initial version
+#####################################################################################################
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create IAM resources for soa app deployment
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Tags
+        Parameters:
+          - pAppName
+          - pAppOwner
+          - pAppITOwner
+          - pCostCenter
+          - pEnvironment
+          - pDeploymentMethod
+          - pRunType
+
+Parameters:
+  pAppName:
+    Type: String 
+    Description: Application name
+    Default: soa
+
+  pAppOwner:
+    Type: String 
+    Description: Application Business Owner
+
+  pAppITOwner:
+    Type: String 
+    Description: Application IT Owner
+
+  pCostCenter:
+    Type: String 
+    Description: Cost Center
+
+  pEnvironment:
+    Type: String 
+    Description: Environment
+    AllowedValues:
+      - prod
+      - test
+      - dev
+
+  pDeploymentMethod:
+    Type: String 
+    Description: Deployment Tool name
+    Default: CloudFormation
+
+  pRunType:
+    Type: String 
+    Description: KMS CMK Key id for encryption
+    Default: Scheduled
+    AllowedValues:
+      - OnDemand
+      - AutoScaling
+      - Scheduled
+
+Resources:
+  rAutoScalingRole:
+    Type: 'AWS::IAM::ServiceLinkedRole'
+    Properties:
+      AWSServiceName: autoscaling.amazonaws.com
+      Description: autoscaling service linked role
+      CustomSuffix: 
+        !Join
+          - '_'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+
+  rSSMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'ssm-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'role'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties: 
+      InstanceProfileName: 
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'ec2-instance-profile'
+      Roles: 
+        - !Ref rSSMRole
+
+
+Outputs:
+  oAutoScalingARN:
+    Description: Autoscaling service linked role ARN
+    Value: !Ref rAutoScalingRole

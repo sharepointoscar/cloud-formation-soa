@@ -1,0 +1,936 @@
+#####################################################################################################
+# This CFN template provisions KMS, ACM certificates
+#
+#    Pre-requisites
+#      VPC with required network connectivity
+#
+#    Provisions:
+#     KMS           - A new key to encrypt DB storage
+#     Amazon MQ     - Broker
+#     RDS           - Aurora MySQL
+#     Certificate   - SSL Certificate
+#     Secrets       - DB and MQ secrets
+#     IAM Policy    - IAM policy attached to instance role to retreive secrets and ssm param
+#
+#    Provision Time:  15-30 mins
+#
+#    Deployment Instructions:
+#     1. Use default security group of VPC in place of SOA app tier security group
+#           and once app cf template deployed successfully then apply the security group change
+#           with a change set.
+#
+#####################################################################################################
+#      DATE    #    MODIFIED BY     #                      DESCRIPTION
+#####################################################################################################
+#  09/21/2020  # AWS PS             #  Initial version
+#####################################################################################################
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create soa app resources - ACM/KMS
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Networking
+        Parameters:
+          - pVPCID
+          - pPrvStackSubnets
+          - pVPCCidr
+          - pSOAAppSecurityGroup
+          - pVPNCidr
+
+      - Label:
+          default: Certificate
+        Parameters:
+          - pSOADomainName
+
+      - Label:
+          default: KMS
+        Parameters:
+          - pSOAStorageEncrypted
+
+      - Label:
+          default: Database
+        Parameters:
+          - pSOADBEngine
+          - pSOADBEngineVersion
+          - pSOADBInstanceType
+          - pDBMultiAZ
+          - pSOADBBackupRetention
+          - pSOADBBackupWindow
+          - pSOADBMaintenanceWindow
+
+      - Label:
+          default: MQ Broker
+        Parameters:
+          - pMQInstanceType
+          - pMQMultiAZ
+
+      - Label:
+          default: MQ Configuration
+        Parameters:
+          - pMQConfigId
+          - pMQConfigRevision
+
+      - Label:
+          default: IAM
+        Parameters:
+          - pEc2RoleName
+
+      - Label:
+          default: Tags
+        Parameters:
+          - pAppName
+          - pAppOwner
+          - pAppITOwner
+          - pCostCenter
+          - pEnvironment
+          - pDeploymentMethod
+          - pRunType
+
+Parameters:
+  pVPCID:
+    Description: VPC id for deployment of this stack.
+    Type: String
+    Default: vpc-xxxxx
+
+  pPrvStackSubnets:
+    Description: Private Subnets to deploy the app servers
+    Type: CommaDelimitedList
+    Default: subnet-xxxxx,subnet-yyyyy
+
+  pVPCCidr:
+    Description: VPC cidr
+    Type: String
+    Default: 10.0.0.0/16
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+  pVPNCidr:
+    Description: VPN cidr
+    Type: String
+    Default: 149.142.224.0/23
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+  pSOAAppSecurityGroup:
+    Description: SOA app ec2 instance security group
+    Type: String
+    Default: sg-xxxx
+
+  pSOADomainName:
+    Description: soa domain name
+    Type: String
+
+  pSOAStorageEncrypted:
+    Type: String
+    Description: Encrypt db storage
+    Default: True
+    AllowedValues:
+      - True
+      - False
+
+  pSOADBEngine:
+    Type: String
+    Description: Database Engine
+    Default: aurora-mysql
+
+  pSOADBEngineVersion:
+    Type: String
+    Description: Database version
+    Default: 5.7.mysql_aurora.2.09.0
+
+  pSOADBInstanceType:
+    Type: String
+    Description: DB instance type
+    Default: db.r5.large
+
+  pSOADBBackupRetention:
+    Type: String
+    Description: DB backup retention in days 0 - 35
+    Default: 35
+
+  pDBMultiAZ:
+    Type: String
+    Description: High availability/Multi AZ deployement
+    Default: true
+    AllowedValues:
+      - true
+      - false
+
+  pSOADBBackupWindow:
+    Type: String
+    Description: Backup window in UTC format hh24:mi-hh24:mi should not be same as Maintenance Window
+    Default: 3:00-4:00
+
+  pSOADBMaintenanceWindow:
+    Type: String
+    Description: Maintenance window in UTC format ddd:hh24:mi-ddd:hh24:mi should not be same as Backup Window
+    Default: sun:5:00-sun:6:00
+
+  pMQInstanceType:
+    Type: String
+    Description: MQ broker ec2 instance type
+    Default: mq.t2.micro
+    AllowedValues:
+      - mq.t2.micro
+      - mq.m5.large
+      - mq.m5.xlarge
+
+  pMQMultiAZ:
+    Type: String
+    Description: Deploy in HA configuration
+    Default: true
+    AllowedValues:
+        - true
+        - false
+
+  pMQConfigId:
+    Type: String
+    Description: MQ Configuration Id
+
+  pMQConfigRevision:
+    Type: String
+    Description: MQ Configuration Revision Number
+
+  pEc2RoleName:
+    Type: String
+    Description: EC2 instance profile role name created in IAM stack
+
+  pAppName:
+    Type: String
+    Description: Application name
+    Default: soa
+
+  pAppOwner:
+    Type: String
+    Description: Application Business Owner
+
+  pAppITOwner:
+    Type: String
+    Description: Application IT Owner
+
+  pCostCenter:
+    Type: String
+    Description: Cost Center
+
+  pEnvironment:
+    Type: String
+    Description: Environment
+    AllowedValues:
+      - prod
+      - test
+      - dev
+
+  pDeploymentMethod:
+    Type: String
+    Description: Deployment Tool name
+    Default: CloudFormation
+
+  pRunType:
+    Type: String
+    Description: KMS CMK Key id for encryption
+    Default: Scheduled
+    AllowedValues:
+      - OnDemand
+      - AutoScaling
+      - Scheduled
+
+Conditions:
+  cDeployEncrypted: !Equals [!Ref pSOAStorageEncrypted, True]
+  cDeployMQMultiAZ: !Equals [!Ref pMQMultiAZ, true]
+  cDeployDBMultiAZ: !Equals [!Ref pDBMultiAZ, true]
+  cPerfInsights: !Equals [!Ref pEnvironment, "prod"]
+
+Resources:
+  rKmsCmk:
+    Condition: cDeployEncrypted
+    Type: 'AWS::KMS::Key'
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Effect: Allow
+            Principal:
+              AWS:
+                !Join
+                  - '_'
+                  - - !Sub 'arn:aws:iam::${AWS::AccountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling'
+                    - !Ref pAppName
+                    - !Ref pEnvironment
+
+            Action:
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey*'
+              - 'kms:DescribeKey'
+            Resource: '*'
+          - Effect: Allow
+            Principal:
+              AWS:
+                !Join
+                  - '_'
+                  - - !Sub 'arn:aws:iam::${AWS::AccountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling'
+                    - !Ref pAppName
+                    - !Ref pEnvironment
+
+            Action:
+              - 'kms:CreateGrant'
+            Resource: '*'
+            Condition:
+              Bool:
+                kms:GrantIsForAWSResource: true
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'key'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rKmsCmkAlias:
+    Condition: cDeployEncrypted
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName:
+        !Join
+          - ''
+          - - 'alias/'
+            - !Ref pAppName
+            - '-'
+            - !Ref pEnvironment
+            - '-kms'
+      TargetKeyId: !Ref rKmsCmk
+
+  rSOADBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: DB Subnet Group
+      SubnetIds: !Ref pPrvStackSubnets
+      DBSubnetGroupName:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - !Ref pSOADBEngine
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - !Ref pSOADBEngine
+                - 'subnetgroup'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rSOADBClusterParameterGroup:
+    Type: AWS::RDS::DBClusterParameterGroup
+    Properties:
+      Description: DB Cluster Parameter group
+      Family: aurora-mysql5.7
+      Parameters:
+        character_set_database: UTF8
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '.'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - !Ref pSOADBEngine
+                - 'cluster'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rSOADBParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: DB Parameter group
+      Family: aurora-mysql5.7
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '.'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - !Ref pSOADBEngine
+                - 'db'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rSOADBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref pVPCID
+      GroupDescription: Security Group used for SOA RDS Instance
+      GroupName:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'rds-sg'
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'rds-sg'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rAccessFromApptoDB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref rSOADBSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !Ref pSOAAppSecurityGroup
+
+  rAccessFromVPCtoDB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref rSOADBSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      CidrIp: !Ref pVPCCidr
+
+  rAccessFromVPNtoDB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref rSOADBSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      CidrIp: !Ref pVPNCidr
+
+  rSOADBSecret:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'db-secret'
+      Description: "SOA DB password"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "dbadmin"}'
+        GenerateStringKey: "password"
+        PasswordLength: 15
+        ExcludeCharacters: '"@/\'
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'db-secret'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rAuroraMySqlCluster:
+    Type: 'AWS::RDS::DBCluster'
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DatabaseName:
+        !Join
+          - '_'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'aurora_db'
+      DBClusterIdentifier:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'aurora-db-cluster'
+      DBClusterParameterGroupName: !Ref rSOADBClusterParameterGroup
+      DBSubnetGroupName: !Ref rSOADBSubnetGroup
+      DeletionProtection: true
+      EnableCloudwatchLogsExports:
+        - audit
+        - error
+        - general
+        - slowquery
+      Engine: !Ref pSOADBEngine
+      EngineVersion: !Ref pSOADBEngineVersion
+      EngineMode: provisioned
+      StorageEncrypted: true
+      KmsKeyId: !If [cDeployEncrypted, !Ref rKmsCmkAlias, !Ref "AWS::NoValue"]
+      MasterUsername: !Sub '{{resolve:secretsmanager:${rSOADBSecret}::username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${rSOADBSecret}::password}}'
+      BackupRetentionPeriod: !Ref pSOADBBackupRetention
+      PreferredBackupWindow: !Ref pSOADBBackupWindow
+      PreferredMaintenanceWindow: !Ref pSOADBMaintenanceWindow
+      VpcSecurityGroupIds:
+        - !Ref rSOADBSecurityGroup
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'aurora-db-cluster'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rAuroraDBFirstInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: primary
+      CopyTagsToSnapshot: true
+      DBInstanceClass: !Ref pSOADBInstanceType
+      DBClusterIdentifier: !Ref rAuroraMySqlCluster
+      Engine: !Ref pSOADBEngine
+      EngineVersion: !Ref pSOADBEngineVersion
+      DBParameterGroupName: !Ref rSOADBParameterGroup
+      DBSubnetGroupName: !Ref rSOADBSubnetGroup
+      PubliclyAccessible: false
+      AutoMinorVersionUpgrade: false
+      EnablePerformanceInsights: true
+      PerformanceInsightsKMSKeyId: !If [cDeployEncrypted, !Ref rKmsCmkAlias, !Ref "AWS::NoValue"]
+      PerformanceInsightsRetentionPeriod: !If [cPerfInsights, 731, 7]
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'aurora-db'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rAuroraDBSecondInstance:
+    Condition: cDeployDBMultiAZ
+    Type: AWS::RDS::DBInstance
+    DependsOn:
+      - rAuroraDBFirstInstance
+    Properties:
+      DBInstanceIdentifier: secondary
+      CopyTagsToSnapshot: true
+      DBInstanceClass: !Ref pSOADBInstanceType
+      DBClusterIdentifier: !Ref rAuroraMySqlCluster
+      Engine: !Ref pSOADBEngine
+      EngineVersion: !Ref pSOADBEngineVersion
+      DBParameterGroupName: !Ref rSOADBParameterGroup
+      DBSubnetGroupName: !Ref rSOADBSubnetGroup
+      PubliclyAccessible: false
+      AutoMinorVersionUpgrade: false
+      EnablePerformanceInsights: true
+      PerformanceInsightsKMSKeyId: !If [cDeployEncrypted, !Ref rKmsCmkAlias, !Ref "AWS::NoValue"]
+      PerformanceInsightsRetentionPeriod: !If [cPerfInsights, 731, 7]
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'aurora-db'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rMQSecGrp:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow necessary access to mq broker
+      VpcId: !Ref pVPCID
+      GroupName:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'mq-sg'
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'mq-sg'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rAccessFromAPP:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref rMQSecGrp
+      IpProtocol: tcp
+      FromPort: 8162
+      ToPort: 8162
+      SourceSecurityGroupId: !Ref pSOAAppSecurityGroup
+
+  rAccessFromVPCtoMQ:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref rMQSecGrp
+      IpProtocol: tcp
+      FromPort: 8162
+      ToPort: 8162
+      CidrIp: !Ref pVPCCidr
+
+  rAccessFromVPNtoMQ:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref rMQSecGrp
+      IpProtocol: tcp
+      FromPort: 8162
+      ToPort: 8162
+      CidrIp: !Ref pVPNCidr
+
+  rSOAMQAdminSecret:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'mqadmin-secret'
+      Description: "SOA MQ Broker admin password"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "mqadmin"}'
+        GenerateStringKey: "password"
+        PasswordLength: 15
+        ExcludeCharacters: '"@/\,:='
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'mqadmin-secret'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rSOAMQUserSecret:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'mquser-secret'
+      Description: "SOA MQ Broker admin password"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "mquser"}'
+        GenerateStringKey: "password"
+        PasswordLength: 15
+        ExcludeCharacters: '"@/\,:='
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'mquser-secret'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rMQBroker:
+    Type: 'AWS::AmazonMQ::Broker'
+    Properties:
+      AutoMinorVersionUpgrade: false
+      BrokerName:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'mq-broker'
+      Configuration:
+        Id: !Ref pMQConfigId
+        Revision: !Ref pMQConfigRevision
+      DeploymentMode: !If [cDeployMQMultiAZ, "ACTIVE_STANDBY_MULTI_AZ", "SINGLE_INSTANCE"]
+      EngineType: ACTIVEMQ
+      EngineVersion: 5.15.9
+      HostInstanceType: !Ref pMQInstanceType
+      EncryptionOptions:
+          KmsKeyId: !If [cDeployEncrypted, !Ref rKmsCmkAlias, !Ref "AWS::NoValue"]
+          UseAwsOwnedKey: false
+      Logs:
+        General: true
+        Audit: true
+      PubliclyAccessible: false
+      SecurityGroups:
+        - !Ref rMQSecGrp
+      SubnetIds:
+        - !Select [0,!Ref pPrvStackSubnets]
+        - !If [cDeployMQMultiAZ, !Select [1,!Ref pPrvStackSubnets], !Ref "AWS::NoValue"]
+      Users:
+        - ConsoleAccess: true
+          Password: !Sub '{{resolve:secretsmanager:${rSOAMQAdminSecret}::password}}'
+          Username: !Sub '{{resolve:secretsmanager:${rSOAMQAdminSecret}::username}}'
+        - Password: !Sub '{{resolve:secretsmanager:${rSOAMQUserSecret}::password}}'
+          Username: !Sub '{{resolve:secretsmanager:${rSOAMQUserSecret}::username}}'
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'mq-broker'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rsoaCert:
+    DependsOn:
+      - rMQBroker
+      - rAuroraDBFirstInstance
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref pSOADomainName
+      ValidationMethod: EMAIL
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'cert'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rSSMParamDB:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'ssm-db-ep'
+      Type: String
+      Value: !GetAtt rAuroraMySqlCluster.Endpoint.Address
+
+  rSecretAccessPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - "secretsmanager:GetSecretValue"
+            Resource:
+              - !Ref rSOAMQAdminSecret
+              - !Ref rSOAMQUserSecret
+              - !Ref rSOADBSecret
+          - Effect: Allow
+            Action:
+              - "ssm:GetParameters"
+              - "ssm:GetParameter"
+            Resource:
+              - !Join
+                  - ''
+                  - - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/'
+                    - !Ref rSSMParamDB
+      PolicyName: 'secret-mgr-policy'
+      Roles:
+        - !Ref pEc2RoleName
+
+Outputs:
+  osoaCertificate:
+    Description: output for soa cert
+    Value: !Ref rsoaCert
+
+  oMQConfigurationArn:
+    Description: MQ Broker ARN
+    Value: !GetAtt rMQBroker.Arn
+
+  oMQConfigurationId:
+    Description: MQ Broker Id
+    Value: !Ref rMQBroker

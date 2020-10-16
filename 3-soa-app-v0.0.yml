@@ -1,0 +1,484 @@
+#####################################################################################################
+# This CFN template deploys Amazon MQ Broker and associates configuration.
+#
+#   Pre-requisites
+#      VPC with required network connectivity
+#      autoscaling service linked role
+#      ec2 instance profile to login via ssm
+#      EC2 Keypair
+#      Successfully deployed MQ Configuration
+#
+#    Provisions:
+#     ALB           - SG, Listener, Target Group 
+#     Autoscaling   - Launch template, ASG
+#
+#    Provision Time:  
+#     15 mins
+# 
+#    Deployment Instructions:
+#     1. Update core template with app security group id through a change set
+# 
+#####################################################################################################
+#      DATE     #    MODIFIED BY     #                      DESCRIPTION
+#####################################################################################################
+#  09/21/2020   # AWS PS             #  Initial version
+#####################################################################################################
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create MQ Broker and associate configuration for SOA dashboard
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Networking
+        Parameters:
+          - pVPCID 
+          - pPrvStackSubnets
+          - pPubStackSubnets
+          - pVPCCidr 
+
+      - Label:
+          default: Load Balancer
+        Parameters:
+          - pLoadBalancerScheme
+          - pSOAAppCert
+
+      - Label:
+          default: Encryption
+        Parameters:
+          - pSOAAppStorageEncrypted 
+          - pSOAAppKMSID
+
+      - Label:
+          default: AutoScaling
+        Parameters:
+          - pSOAAppInstanceType
+          - pSOAAppKeyPairName
+          - pBaseAMI
+          - pSOAAppASGMin
+          - pSOAAppASGMax
+          - pAutoScalingServiceRoleARN
+
+      - Label:
+          default: Tags
+        Parameters:
+          - pAppName
+          - pAppOwner
+          - pAppITOwner
+          - pCostCenter
+          - pEnvironment
+          - pDeploymentMethod
+          - pRunType
+
+Parameters:
+  pVPCID:
+    Description: VPC id for deployment of this stack.
+    Type: String
+    Default: vpc-xxxxx
+
+  pPrvStackSubnets:
+    Description: Private Subnets to deploy the app servers
+    Type: CommaDelimitedList
+    Default: subnet-xxxxx,subnet-yyyyy
+
+  pPubStackSubnets:
+    Description: Public Subnets to deploy the load balancer
+    Type: CommaDelimitedList
+    Default: subnet-xxxxx,subnet-yyyyy
+  
+  pVPCCidr:
+    Description: VPC cidr 
+    Type: String
+    Default: 10.0.0.0/16
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+  pLoadBalancerScheme:
+    Description: Load balancer visibility 
+    Type: String 
+    AllowedValues:
+     - internal
+     - internet-facing
+
+  pSOAAppCert:
+    Type: CommaDelimitedList
+    Description: SOAApp certificate ARN
+
+  pSOAAppStorageEncrypted:
+    Type: String
+    Description: Encrypt db & efs storage 
+    Default: True
+    AllowedValues:
+      - True
+      - False
+
+  pSOAAppKMSID:
+    Type: String
+    Description: KMS CMK Key id for encryption
+
+  pSOAAppInstanceType:
+    Type: String
+    Description: SOAApp ec2 instance type
+    Default: t2.small
+    AllowedValues:
+      - t2.small
+      - m5.large
+      - m5.xlarge
+
+  pSOAAppKeyPairName: 
+    Description: EC2 instance login key pair name
+    Type: AWS::EC2::KeyPair::KeyName
+
+  pBaseAMI:
+    Description: AMI Id of SOAApp app instance
+    Type: String
+
+  pSOAAppASGMin:
+    Description: Min nbr of instances to be launched with auto scaling group
+    Type: String
+
+  pSOAAppASGMax:
+    Description: Max nbr of instances to be launched with auto scaling group
+    Type: String
+
+  pAutoScalingServiceRoleARN:
+    Description: Auto Scaling service linked role ARN
+    Type: String
+
+  pAppName:
+    Type: String 
+    Description: Application name
+    Default: soa
+
+  pAppOwner:
+    Type: String 
+    Description: Application Business Owner
+
+  pAppITOwner:
+    Type: String 
+    Description: Application IT Owner
+
+  pCostCenter:
+    Type: String 
+    Description: Cost Center
+
+  pEnvironment:
+    Type: String 
+    Description: Environment
+    AllowedValues:
+      - prod
+      - test
+      - dev
+
+  pDeploymentMethod:
+    Type: String 
+    Description: Deployment Tool name
+    Default: CloudFormation
+
+  pRunType:
+    Type: String 
+    Description: KMS CMK Key id for encryption
+    Default: Scheduled
+    AllowedValues:
+      - OnDemand
+      - AutoScaling
+      - Scheduled
+
+Conditions:
+  cDeployEncrypted: !Equals [!Ref pSOAAppStorageEncrypted, True]
+
+Resources:
+  rSOAAppAlb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: application
+      Name: 
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'alb'
+      Scheme: !Ref pLoadBalancerScheme
+      Subnets: !Ref pPubStackSubnets
+      SecurityGroups: 
+        - !GetAtt rAlbSecurityGroup.GroupId
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '.'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'alb'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rSOAAppTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      Name: 
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'alb-target-group'
+      Port: 3001
+      Protocol: HTTP
+      TargetType: instance
+      VpcId: !Ref pVPCID
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '.'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'alb-target-group'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rSOAAppAlbListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties: 
+      Certificates:
+      - CertificateArn: !Join 
+        - ''
+        - !Ref pSOAAppCert
+      DefaultActions: 
+      - Type: forward
+        TargetGroupArn: !Ref rSOAAppTargetGroup
+      LoadBalancerArn: !Ref rSOAAppAlb
+      Port: 443
+      Protocol: HTTPS
+
+  rAlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow necessary access from to ALB
+      VpcId: !Ref pVPCID
+      GroupName: 
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'alb-sg'
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'alb-sg'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rAccesstoAlbFromESB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref rAlbSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: "128.97.215.0/24"
+
+  rAccesstoAlbFromVPN:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref rAlbSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: "149.142.224.0/23"
+
+  rAccesstoAlbFromVPC:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref rAlbSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: !Ref pVPCCidr
+
+  rSOAAppAppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow necessary access to SOAApp app ec2 instances
+      VpcId: !Ref pVPCID
+      GroupName: 
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'app-sg'
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'app-sg'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+  rAccessFromALB:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref rSOAAppAppSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3001
+      ToPort: 3001
+      SourceSecurityGroupId: !Ref rAlbSecurityGroup
+    
+  rAccessFromVPCtoApp:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref rSOAAppAppSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3001
+      ToPort: 3001
+      CidrIp: !Ref pVPCCidr
+    
+  rAccessFromVPCSSH:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref rSOAAppAppSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      CidrIp: !Ref pVPCCidr
+  
+  rSOAAppLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties: 
+      LaunchTemplateName: 
+        !Join
+          - '-'
+          - - !Ref pAppName 
+            - !Ref pEnvironment
+            - 'app-lt'
+      LaunchTemplateData: 
+        IamInstanceProfile: 
+          Name: 
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'ec2-instance-profile'
+        BlockDeviceMappings: 
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 30
+            VolumeType: "gp2"
+            Encrypted: !Ref pSOAAppStorageEncrypted
+            KmsKeyId: !If [cDeployEncrypted, !Ref pSOAAppKMSID, !Ref "AWS::NoValue"]
+        TagSpecifications:
+        - ResourceType: instance
+          Tags:
+          - Key: AppName
+            Value: !Ref pAppName
+          - Key: AppOwner
+            Value: !Ref pAppOwner
+          - Key: AppITOwner
+            Value: !Ref pAppITOwner
+          - Key: CostCenter
+            Value: !Ref pCostCenter
+          - Key: Environment
+            Value: !Ref pEnvironment
+          - Key: RunType
+            Value: !Ref pRunType
+          - Key: DeploymentMethod
+            Value: !Ref pDeploymentMethod
+          - Key: Name
+            Value: 
+              !Join
+                - '-'
+                - - !Ref pAppName 
+                  - !Ref pEnvironment
+                  - 'app-instance'
+
+        ImageId: !Ref pBaseAMI
+        InstanceType: !Ref pSOAAppInstanceType
+        KeyName: !Ref pSOAAppKeyPairName
+        SecurityGroupIds: [!Ref rSOAAppAppSecurityGroup]
+
+  SOAAppASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: 
+        !Join
+          - '-'
+          - - !Ref pAppName 
+            - !Ref pEnvironment
+            - 'asg'
+      MinSize: !Ref pSOAAppASGMin  
+      MaxSize: !Ref pSOAAppASGMax
+      HealthCheckGracePeriod: 300
+      LaunchTemplate:
+        LaunchTemplateId: !Ref rSOAAppLaunchTemplate
+        Version: !GetAtt rSOAAppLaunchTemplate.LatestVersionNumber
+      VPCZoneIdentifier: !Ref pPrvStackSubnets
+      TargetGroupARNs: [!Ref rSOAAppTargetGroup]
+      ServiceLinkedRoleARN: !Ref pAutoScalingServiceRoleARN
+
+Outputs:
+  oLBSecurityGroup:
+    Description: Security Group ID of ALB Security Group
+    Value: !GetAtt rAlbSecurityGroup.GroupId
+
+  oAppSecurityGroup:
+    Description: Security Group ID of APP instances
+    Value: !GetAtt rSOAAppAppSecurityGroup.GroupId
+
+  oSOAAppTargetgroupArn:
+    Description: TargetGroup for SOAApp
+    Value: !Ref rSOAAppTargetGroup 
