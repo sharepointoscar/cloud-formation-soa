@@ -217,7 +217,7 @@ Parameters:
     AllowedValues:
       - prod
       - test
-      - dev
+      - dev-gene
 
   pDeploymentMethod:
     Type: String
@@ -718,6 +718,24 @@ Resources:
       FromPort: 8162
       ToPort: 8162
       CidrIp: !Ref pVPNCidr
+
+  rAccessFromVPNtoMQOpenWire:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref rMQSecGrp
+      IpProtocol: tcp
+      FromPort: 61617
+      ToPort: 61617
+      CidrIp: !Ref pVPNCidr
+
+  rAccessFromAPPOpenWire:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref rMQSecGrp
+      IpProtocol: tcp
+      FromPort: 61617
+      ToPort: 61617
+      SourceSecurityGroupId: !Ref pSOAAppSecurityGroup
 
   rSOAMQAdminSecret:
     Type: 'AWS::SecretsManager::Secret'
