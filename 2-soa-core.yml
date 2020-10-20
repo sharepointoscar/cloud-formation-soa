@@ -23,6 +23,10 @@
 #      DATE    #    MODIFIED BY     #                      DESCRIPTION
 #####################################################################################################
 #  09/21/2020  # AWS PS             #  Initial version
+#  10/08/2020  # AWS PS             #  Added SSM param for DB endpoint per Meena M feedback
+#  10/15/2020  # AWS PS             #  Parameterized backup/mainteance window per Lynn L feedback
+#              #                    #  Generated DB/MQ creds through secret mgr as a best practice
+#  10/19/2020  # AWS PS             #  Added Domain validation options per Chris S feedback
 #####################################################################################################
 AWSTemplateFormatVersion: 2010-09-09
 Description: Create soa app resources - ACM/KMS
@@ -42,6 +46,7 @@ Metadata:
           default: Certificate
         Parameters:
           - pSOADomainName
+          - pValidationDomain
 
       - Label:
           default: KMS
@@ -118,6 +123,11 @@ Parameters:
   pSOADomainName:
     Description: soa domain name
     Type: String
+
+  pValidationDomain:
+    Description: Validation domain name
+    Type: String
+    Default: ucla.edu
 
   pSOAStorageEncrypted:
     Type: String
@@ -879,6 +889,9 @@ Resources:
     Properties:
       DomainName: !Ref pSOADomainName
       ValidationMethod: EMAIL
+      DomainValidationOptions:
+        - DomainName: !Ref pSOADomainName
+          ValidationDomain: !Ref pValidationDomain
       Tags:
         - Key: Name
           Value:
