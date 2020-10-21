@@ -1,0 +1,116 @@
+#####################################################################################################
+# This CFN template Provisions S3 Bucket.
+#
+#    Pre-requisites
+#      None
+#
+#    Provisions:
+#     S3 - Bucket
+#
+#    Provision Time:
+#     1 minitue
+#
+#    Deployment Instructions:
+#     NONE
+#
+#####################################################################################################
+#      DATE     #    MODIFIED BY      #                DESCRIPTION
+#####################################################################################################
+#  10/21/2020   #    SOA Team         #                Initial version
+#####################################################################################################
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creates a S3 Bucket for SOA Dashboard (Not Publicly Accessible)
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Bucket Information
+        Parameters:
+          - pBucketName
+
+      - Label:
+          default: Tags
+        Parameters:
+          - pAppName
+          - pAppOwner
+          - pAppITOwner
+          - pCostCenter
+          - pEnvironment
+          - pDeploymentMethod
+
+Parameters:
+  pBucketName:
+    Type: String
+    Description: S3 Bucket name (Note that Application name and Environment will be prefixed to this bucket name)
+
+  pAppName:
+    Type: String
+    Description: Application name
+    Default: soa
+
+  pAppOwner:
+    Type: String
+    Description: Application Business Owner
+
+  pAppITOwner:
+    Type: String
+    Description: Application IT Owner
+
+  pCostCenter:
+    Type: String
+    Description: Cost Center
+
+  pEnvironment:
+    Type: String
+    Description: Environment
+    AllowedValues:
+      - prod
+      - test
+      - dev
+
+  pDeploymentMethod:
+    Type: String
+    Description: Deployment Tool name
+    Default: CloudFormation
+
+Resources:
+
+  rS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - !Ref pBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - !Ref pBucketName
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
+
+Outputs:
+  oS3Bucket:
+    Value: !Ref rS3Bucket
+    Description: S3 Bucket Name
