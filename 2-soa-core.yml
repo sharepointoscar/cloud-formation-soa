@@ -729,15 +729,6 @@ Resources:
       ToPort: 8162
       CidrIp: !Ref pVPNCidr
 
-  rAccessFromVPNtoMQOpenWire:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupId: !Ref rMQSecGrp
-      IpProtocol: tcp
-      FromPort: 61617
-      ToPort: 61617
-      CidrIp: !Ref pVPNCidr
-
   rAccessFromAPPOpenWire:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
@@ -746,6 +737,24 @@ Resources:
       FromPort: 61617
       ToPort: 61617
       SourceSecurityGroupId: !Ref pSOAAppSecurityGroup
+
+  rAccessFromVPCtoMQ:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref rMQSecGrp
+      IpProtocol: tcp
+      FromPort: 61617
+      ToPort: 61617
+      CidrIp: !Ref pVPCCidr
+
+  rAccessFromVPNtoMQOpenWire:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref rMQSecGrp
+      IpProtocol: tcp
+      FromPort: 61617
+      ToPort: 61617
+      CidrIp: !Ref pVPNCidr
 
   rSOAMQAdminSecret:
     Type: 'AWS::SecretsManager::Secret'
