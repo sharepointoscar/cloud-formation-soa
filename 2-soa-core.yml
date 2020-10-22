@@ -227,7 +227,7 @@ Parameters:
     AllowedValues:
       - prod
       - test
-      - dev-gene
+      - dev
 
   pDeploymentMethod:
     Type: String
