@@ -770,7 +770,7 @@ Resources:
         SecretStringTemplate: '{"username": "mqadmin"}'
         GenerateStringKey: "password"
         PasswordLength: 15
-        ExcludeCharacters: '"@/\,:='
+        ExcludeCharacters: '"@/\,:=$!.'
       Tags:
         - Key: Name
           Value:
@@ -808,7 +808,7 @@ Resources:
         SecretStringTemplate: '{"username": "mquser"}'
         GenerateStringKey: "password"
         PasswordLength: 15
-        ExcludeCharacters: '"@/\,:='
+        ExcludeCharacters: '"@/\,:=$!.'
       Tags:
         - Key: Name
           Value:
@@ -831,6 +831,44 @@ Resources:
           Value: !Ref pRunType
         - Key: DeploymentMethod
           Value: !Ref pDeploymentMethod
+
+rSOAMQAppSecret:
+  Type: 'AWS::SecretsManager::Secret'
+  Properties:
+    Name:
+      !Join
+        - '-'
+        - - !Ref pAppName
+          - !Ref pEnvironment
+          - 'mqapp-secret'
+    Description: "SOA MQ Broker application password"
+    GenerateSecretString:
+      SecretStringTemplate: '{"username": "dashboard_app"}'
+      GenerateStringKey: "password"
+      PasswordLength: 15
+      ExcludeCharacters: '"@/\,:=$!.'
+    Tags:
+      - Key: Name
+        Value:
+          !Join
+            - '-'
+            - - !Ref pAppName
+              - !Ref pEnvironment
+              - 'mqapp-secret'
+      - Key: AppName
+        Value: !Ref pAppName
+      - Key: AppOwner
+        Value: !Ref pAppOwner
+      - Key: AppITOwner
+        Value: !Ref pAppITOwner
+      - Key: CostCenter
+        Value: !Ref pCostCenter
+      - Key: Environment
+        Value: !Ref pEnvironment
+      - Key: RunType
+        Value: !Ref pRunType
+      - Key: DeploymentMethod
+        Value: !Ref pDeploymentMethod
 
   rMQBroker:
     Type: 'AWS::AmazonMQ::Broker'
@@ -867,6 +905,8 @@ Resources:
           Username: !Sub '{{resolve:secretsmanager:${rSOAMQAdminSecret}::username}}'
         - Password: !Sub '{{resolve:secretsmanager:${rSOAMQUserSecret}::password}}'
           Username: !Sub '{{resolve:secretsmanager:${rSOAMQUserSecret}::username}}'
+        - Password: !Sub '{{resolve:secretsmanager:${rSOAMQAppSecret}::password}}'
+          Username: !Sub '{{resolve:secretsmanager:${rSOAMQAppSecret}::username}}'
       Tags:
         - Key: Name
           Value:
