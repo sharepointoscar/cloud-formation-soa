@@ -832,43 +832,43 @@ Resources:
         - Key: DeploymentMethod
           Value: !Ref pDeploymentMethod
 
-rSOAMQAppSecret:
-  Type: 'AWS::SecretsManager::Secret'
-  Properties:
-    Name:
-      !Join
-        - '-'
-        - - !Ref pAppName
-          - !Ref pEnvironment
-          - 'mqapp-secret'
-    Description: "SOA MQ Broker application password"
-    GenerateSecretString:
-      SecretStringTemplate: '{"username": "dashboard_app"}'
-      GenerateStringKey: "password"
-      PasswordLength: 15
-      ExcludeCharacters: '"@/\,:=$!.'
-    Tags:
-      - Key: Name
-        Value:
-          !Join
-            - '-'
-            - - !Ref pAppName
-              - !Ref pEnvironment
-              - 'mqapp-secret'
-      - Key: AppName
-        Value: !Ref pAppName
-      - Key: AppOwner
-        Value: !Ref pAppOwner
-      - Key: AppITOwner
-        Value: !Ref pAppITOwner
-      - Key: CostCenter
-        Value: !Ref pCostCenter
-      - Key: Environment
-        Value: !Ref pEnvironment
-      - Key: RunType
-        Value: !Ref pRunType
-      - Key: DeploymentMethod
-        Value: !Ref pDeploymentMethod
+  rSOAMQAppSecret:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'mqapp-secret'
+      Description: "SOA MQ Broker application password"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "dashboard_app"}'
+        GenerateStringKey: "password"
+        PasswordLength: 15
+        ExcludeCharacters: '"@/\,:=$!.'
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+              - '-'
+              - - !Ref pAppName
+                - !Ref pEnvironment
+                - 'mqapp-secret'
+        - Key: AppName
+          Value: !Ref pAppName
+        - Key: AppOwner
+          Value: !Ref pAppOwner
+        - Key: AppITOwner
+          Value: !Ref pAppITOwner
+        - Key: CostCenter
+          Value: !Ref pCostCenter
+        - Key: Environment
+          Value: !Ref pEnvironment
+        - Key: RunType
+          Value: !Ref pRunType
+        - Key: DeploymentMethod
+          Value: !Ref pDeploymentMethod
 
   rMQBroker:
     Type: 'AWS::AmazonMQ::Broker'
