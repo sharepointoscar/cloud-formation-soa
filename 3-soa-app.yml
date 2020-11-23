@@ -22,6 +22,7 @@
 #      DATE     #    MODIFIED BY     #                      DESCRIPTION
 #####################################################################################################
 #  09/21/2020   # AWS PS             #  Initial version
+#  11/23/2020   # SOA team           #  HTTP to HTTPS redirection and Puppet installation through UserData
 #####################################################################################################
 AWSTemplateFormatVersion: 2010-09-09
 Description: Create MQ Broker and associate configuration for SOA dashboard
@@ -45,7 +46,7 @@ Metadata:
       - Label:
           default: Encryption
         Parameters:
-          - pSOAAppStorageEncrypted 
+          - pSOAAppStorageEncrypted
           - pSOAAppKMSID
 
       - Label:
@@ -84,16 +85,16 @@ Parameters:
     Description: Public Subnets to deploy the load balancer
     Type: CommaDelimitedList
     Default: subnet-xxxxx,subnet-yyyyy
-  
+
   pVPCCidr:
-    Description: VPC cidr 
+    Description: VPC cidr
     Type: String
     Default: 10.0.0.0/16
     AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
 
   pLoadBalancerScheme:
-    Description: Load balancer visibility 
-    Type: String 
+    Description: Load balancer visibility
+    Type: String
     AllowedValues:
      - internal
      - internet-facing
@@ -104,7 +105,7 @@ Parameters:
 
   pSOAAppStorageEncrypted:
     Type: String
-    Description: Encrypt db & efs storage 
+    Description: Encrypt db & efs storage
     Default: True
     AllowedValues:
       - True
@@ -123,7 +124,7 @@ Parameters:
       - m5.large
       - m5.xlarge
 
-  pSOAAppKeyPairName: 
+  pSOAAppKeyPairName:
     Description: EC2 instance login key pair name
     Type: AWS::EC2::KeyPair::KeyName
 
@@ -144,24 +145,24 @@ Parameters:
     Type: String
 
   pAppName:
-    Type: String 
+    Type: String
     Description: Application name
     Default: soa
 
   pAppOwner:
-    Type: String 
+    Type: String
     Description: Application Business Owner
 
   pAppITOwner:
-    Type: String 
+    Type: String
     Description: Application IT Owner
 
   pCostCenter:
-    Type: String 
+    Type: String
     Description: Cost Center
 
   pEnvironment:
-    Type: String 
+    Type: String
     Description: Environment
     AllowedValues:
       - prod
@@ -169,12 +170,12 @@ Parameters:
       - dev
 
   pDeploymentMethod:
-    Type: String 
+    Type: String
     Description: Deployment Tool name
     Default: CloudFormation
 
   pRunType:
-    Type: String 
+    Type: String
     Description: KMS CMK Key id for encryption
     Default: Scheduled
     AllowedValues:
@@ -190,7 +191,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Type: application
-      Name: 
+      Name:
         !Join
           - '-'
           - - !Ref pAppName
@@ -198,7 +199,7 @@ Resources:
             - 'alb'
       Scheme: !Ref pLoadBalancerScheme
       Subnets: !Ref pPubStackSubnets
-      SecurityGroups: 
+      SecurityGroups:
         - !GetAtt rAlbSecurityGroup.GroupId
       Tags:
         - Key: Name
@@ -225,10 +226,10 @@ Resources:
 
   rSOAAppTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties: 
+    Properties:
       HealthCheckPath: /
       HealthCheckProtocol: HTTP
-      Name: 
+      Name:
         !Join
           - '-'
           - - !Ref pAppName
@@ -263,24 +264,40 @@ Resources:
 
   rSOAAppAlbListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties: 
+    Properties:
       Certificates:
-      - CertificateArn: !Join 
+      - CertificateArn: !Join
         - ''
         - !Ref pSOAAppCert
-      DefaultActions: 
+      DefaultActions:
       - Type: forward
         TargetGroupArn: !Ref rSOAAppTargetGroup
       LoadBalancerArn: !Ref rSOAAppAlb
       Port: 443
       Protocol: HTTPS
 
+  rSOAAppAlbHTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: redirect
+        RedirectConfig:
+          Protocol: HTTPS
+          Port: 443
+          Host: "#{host}"
+          Path: "/#{path}"
+          Query: "#{query}"
+          StatusCode: "HTTP_301"
+      LoadBalancerArn: !Ref rSOAAppAlb
+      Port: 80
+      Protocol: HTTP
+
   rAlbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow necessary access from to ALB
       VpcId: !Ref pVPCID
-      GroupName: 
+      GroupName:
         !Join
           - '-'
           - - !Ref pAppName
@@ -327,6 +344,15 @@ Resources:
       ToPort: 443
       CidrIp: "149.142.224.0/23"
 
+  rAccesstoAlbFromVPNonHttp:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref rAlbSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: "149.142.224.0/23"
+
   rAccesstoAlbFromVPC:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -341,7 +367,7 @@ Resources:
     Properties:
       GroupDescription: Allow necessary access to SOAApp app ec2 instances
       VpcId: !Ref pVPCID
-      GroupName: 
+      GroupName:
         !Join
           - '-'
           - - !Ref pAppName
@@ -378,7 +404,7 @@ Resources:
       FromPort: 3001
       ToPort: 3001
       SourceSecurityGroupId: !Ref rAlbSecurityGroup
-    
+
   rAccessFromVPCtoApp:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
@@ -387,7 +413,7 @@ Resources:
       FromPort: 3001
       ToPort: 3001
       CidrIp: !Ref pVPCCidr
-    
+
   rAccessFromVPCSSH:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
@@ -396,25 +422,25 @@ Resources:
       FromPort: 22
       ToPort: 22
       CidrIp: !Ref pVPCCidr
-  
+
   rSOAAppLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
-    Properties: 
-      LaunchTemplateName: 
+    Properties:
+      LaunchTemplateName:
         !Join
           - '-'
-          - - !Ref pAppName 
+          - - !Ref pAppName
             - !Ref pEnvironment
             - 'app-lt'
-      LaunchTemplateData: 
-        IamInstanceProfile: 
-          Name: 
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Name:
             !Join
               - '-'
               - - !Ref pAppName
                 - !Ref pEnvironment
                 - 'ec2-instance-profile'
-        BlockDeviceMappings: 
+        BlockDeviceMappings:
         - DeviceName: /dev/xvda
           Ebs:
             VolumeSize: 30
@@ -439,10 +465,10 @@ Resources:
           - Key: DeploymentMethod
             Value: !Ref pDeploymentMethod
           - Key: Name
-            Value: 
+            Value:
               !Join
                 - '-'
-                - - !Ref pAppName 
+                - - !Ref pAppName
                   - !Ref pEnvironment
                   - 'app-instance'
 
@@ -450,17 +476,45 @@ Resources:
         InstanceType: !Ref pSOAAppInstanceType
         KeyName: !Ref pSOAAppKeyPairName
         SecurityGroupIds: [!Ref rSOAAppAppSecurityGroup]
+        UserData:
+          Fn::Base64: !Sub |
+              #!/bin/sh
+              #change to sudo user
+              sudo su
+              #rpm install
+              rpm -Uvh https://yum.puppet.com/puppet6-release-el-7.noarch.rpm
+              #install puppet agent
+              yum -y install puppet-agent
+              #create symbolic links
+              cd /usr/local/bin
+              ln -s /opt/puppetlabs/bin/facter facter
+              ln -s /opt/puppetlabs/bin/hiera hiera
+              ln -s /opt/puppetlabs/bin/puppet puppet
+              #set the puppet master server hostname into puppet.conf
+              /opt/puppetlabs/bin/puppet config set server is-pup-ws-p01.it.ucla.edu
+              #get the private DNS of the EC2 instance and set to puppet conf
+              /opt/puppetlabs/bin/puppet config set certname $HOSTNAME
+              #set the evironment for aws
+              /opt/puppetlabs/bin/puppet config --section agent set environment aws
+              #enable puppet service, start and check the status
+              #systemctl status|enable|start puppet
+              #run puppet agent command to register with the master
+              #puppet agent -t
+              #test
+              cd /opt/
+              mkdir test
+              echo "Hello .. $(hostname) ... from $(hostname -f)" > /opt/test/index.txt
 
   SOAAppASG:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      AutoScalingGroupName: 
+      AutoScalingGroupName:
         !Join
           - '-'
-          - - !Ref pAppName 
+          - - !Ref pAppName
             - !Ref pEnvironment
             - 'asg'
-      MinSize: !Ref pSOAAppASGMin  
+      MinSize: !Ref pSOAAppASGMin
       MaxSize: !Ref pSOAAppASGMax
       HealthCheckGracePeriod: 300
       LaunchTemplate:
@@ -481,4 +535,4 @@ Outputs:
 
   oSOAAppTargetgroupArn:
     Description: TargetGroup for SOAApp
-    Value: !Ref rSOAAppTargetGroup 
+    Value: !Ref rSOAAppTargetGroup
