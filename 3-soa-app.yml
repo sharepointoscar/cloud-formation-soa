@@ -500,10 +500,6 @@ Resources:
               #systemctl status|enable|start puppet
               #run puppet agent command to register with the master
               #puppet agent -t
-              #test
-              cd /opt/
-              mkdir test
-              echo "Hello .. $(hostname) ... from $(hostname -f)" > /opt/test/index.txt
 
   SOAAppASG:
     Type: AWS::AutoScaling::AutoScalingGroup
