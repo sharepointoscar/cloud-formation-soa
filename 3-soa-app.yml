@@ -48,7 +48,7 @@ Metadata:
         Parameters:
           - pSOAAppStorageEncrypted
           - pSOAAppKMSID
-
+      # need scailing policies
       - Label:
           default: AutoScaling
         Parameters:
