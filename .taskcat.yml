@@ -1,7 +1,21 @@
 project:
-  name: my-cfn-project
+  name: ucla-dashboard-app
+  owner: team@ucla.edu
+  shorten_stack_name: true
   regions:
   - us-west-2
+  template: submodules/0-soa.iam.yml
+  parameters:
+    QSS3BucketName: $[taskcat_autobucket]
+    QSS3BucketRegion: $[taskcat_current_region]
+
 tests:
-  default:
-    template: ./submodules/0-soa-iam.yml
+  soa-iam:
+    parameters: 
+      pAppName: soa
+      pAppOwner: oscar
+      pAppITOwner: Datta
+      pCostCenter: IT
+      pEnvironment: dev
+      pDeploymentMethod: CloudFormation
+      pRunType: OnDemand
