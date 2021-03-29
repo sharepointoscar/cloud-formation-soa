@@ -4,4 +4,4 @@ project:
   - us-west-2
 tests:
   default:
-    template: ./submodules/0-soa-iam.yaml
+    template: ./submodules/0-soa-iam.yml
