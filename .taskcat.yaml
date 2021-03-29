@@ -1,0 +1,7 @@
+project:
+  name: my-cfn-project
+  regions:
+  - us-west-2
+tests:
+  default:
+    template: ./main.yaml
