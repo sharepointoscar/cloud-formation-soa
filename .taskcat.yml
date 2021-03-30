@@ -11,12 +11,19 @@ project:
   parameters:
     QSS3BucketName: $[taskcat_autobucket]
     QSS3BucketRegion: $[taskcat_current_region]
-
+    pAppName: soa
+    pAppOwner: oscar
+    pAppITOwner: Datta
+    pCostCenter: IT
+    pEnvironment: dev
+    pDeploymentMethod: CloudFormation
+    pRunType: OnDemand
 tests:
   defaults:
     parameters: 
       QSS3BucketName: tcat-cloud-formation-soa-ep1y4neb
       QSS3BucketRegion: $[taskcat_current_region]
+      
   soa-iam:
     template: submodules/0-soa-iam.yml
     parameters: 
