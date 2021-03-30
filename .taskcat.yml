@@ -1,5 +1,6 @@
+
 project:
-  name: ucla-dashboard
+  name: cloud-formation-soa
   owner: team@ucla.edu
   shorten_stack_name: true
   regions:
