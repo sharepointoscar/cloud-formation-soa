@@ -1,5 +1,5 @@
 project:
-  name: ucla-dashboard-app
+  name: ucla-dashboard
   owner: team@ucla.edu
   shorten_stack_name: true
   regions:
@@ -9,7 +9,7 @@ project:
     QSS3BucketName: $[taskcat_autobucket]
     QSS3BucketRegion: $[taskcat_current_region]
 
-tests:
+tests:  
   soa-iam:
     parameters: 
       pAppName: soa
