@@ -3,19 +3,22 @@ project:
   name: cloud-formation-soa
   owner: team@ucla.edu
   shorten_stack_name: true
+  s3_bucket: tcat-cloud-formation-soa-ep1y4neb
   regions:
   - us-west-2
-  template: ./submodules/0-soa.iam.yml
+  # main entry point template (main.yaml) should be specified below.
+  template: submodules/0-soa-iam.yml
   parameters:
     QSS3BucketName: $[taskcat_autobucket]
     QSS3BucketRegion: $[taskcat_current_region]
 
 tests:
-  default:
-    template: ./submodules/0-soa.iam.yml
-    regions:
-    - us-west-2  
+  defaults:
+    parameters: 
+      QSS3BucketName: tcat-cloud-formation-soa-ep1y4neb
+      QSS3BucketRegion: $[taskcat_current_region]
   soa-iam:
+    template: submodules/0-soa-iam.yml
     parameters: 
       pAppName: soa
       pAppOwner: oscar
@@ -24,3 +27,17 @@ tests:
       pEnvironment: dev
       pDeploymentMethod: CloudFormation
       pRunType: OnDemand
+    regions:
+      - us-west-2 
+  soa-mqconf:
+    template: submodules/1-soa-mqconf.yml
+    parameters: 
+      pAppName: soa
+      pAppOwner: oscar
+      pAppITOwner: Datta
+      pCostCenter: IT
+      pEnvironment: dev
+      pDeploymentMethod: CloudFormation
+      pRunType: OnDemand
+    regions:
+      - us-west-2 
