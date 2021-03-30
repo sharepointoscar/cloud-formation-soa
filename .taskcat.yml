@@ -5,12 +5,16 @@ project:
   shorten_stack_name: true
   regions:
   - us-west-2
-  template: submodules/0-soa.iam.yml
+  template: ./submodules/0-soa.iam.yml
   parameters:
     QSS3BucketName: $[taskcat_autobucket]
     QSS3BucketRegion: $[taskcat_current_region]
 
-tests:  
+tests:
+  default:
+    template: ./submodules/0-soa.iam.yml
+    regions:
+    - us-west-2  
   soa-iam:
     parameters: 
       pAppName: soa
