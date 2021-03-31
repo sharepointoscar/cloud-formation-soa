@@ -132,10 +132,10 @@ Parameters:
   pSOAStorageEncrypted:
     Type: String
     Description: Encrypt db storage
-    Default: True
+    Default: true
     AllowedValues:
-      - True
-      - False
+      - true
+      - false
 
   pSOADBEngine:
     Type: String
@@ -244,7 +244,7 @@ Parameters:
       - Scheduled
 
 Conditions:
-  cDeployEncrypted: !Equals [!Ref pSOAStorageEncrypted, True]
+  cDeployEncrypted: !Equals [!Ref pSOAStorageEncrypted, true]
   cDeployMQMultiAZ: !Equals [!Ref pMQMultiAZ, true]
   cDeployDBMultiAZ: !Equals [!Ref pDBMultiAZ, true]
   cPerfInsights: !Equals [!Ref pEnvironment, "prod"]
@@ -590,6 +590,7 @@ Resources:
   rAuroraDBFirstInstance:
     Type: AWS::RDS::DBInstance
     Properties:
+      DeletionProtection: false
       DBInstanceIdentifier: primary
       CopyTagsToSnapshot: true
       DBInstanceClass: !Ref pSOADBInstanceType
@@ -632,6 +633,7 @@ Resources:
     DependsOn:
       - rAuroraDBFirstInstance
     Properties:
+      DeletionProtection: false
       DBInstanceIdentifier: secondary
       CopyTagsToSnapshot: true
       DBInstanceClass: !Ref pSOADBInstanceType
@@ -738,7 +740,7 @@ Resources:
       ToPort: 61617
       SourceSecurityGroupId: !Ref pSOAAppSecurityGroup
 
-  rAccessFromVPCtoMQ:
+  rAccessFromVPCtoMQ1:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupId: !Ref rMQSecGrp
