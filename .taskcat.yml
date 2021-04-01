@@ -6,9 +6,8 @@ project:
   s3_bucket: tcat-cloud-formation-soa-ep1y4neb
   regions:
   - us-west-2
-  - us-east-1
   # main entry point template (main.yaml) should be specified below.
-  template: submodules/0-soa-iam.yml
+  template: ./main.yaml
   parameters:
     QSS3BucketName: $[taskcat_autobucket]
     QSS3BucketRegion: $[taskcat_current_region]

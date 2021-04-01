@@ -1,17 +1,131 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: Deploys the UCLA Dashboard app and related resources.
 Metadata:
-  QSLint:
-    Exclusions: [W9002, W9003, W9004, W9006]
-
+  QuickStartDocumentation:
+    EntrypointName: "Launch Infrastructure for the Dashboard App"
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Basic configuration
+        Parameters:
+          - pAppName
+          - pAppOwner
+          - pAppITOwner
+          - pCostCenter
+          - pEnvironment
+          - pDeploymentMethod
+          - pRunType
+      - Label:
+          default: AWS Template configuration S3 Bucket Location
+        Parameters:
+          - QSS3BucketName
+          - QSS3KeyPrefix
+          - QSS3BucketRegion
+    ParameterLabels:
+      QSS3BucketName:
+        default: Quick Start S3 bucket name
+      QSS3KeyPrefix:
+        default: Quick Start S3 key prefix
+      QSS3BucketRegion:
+        default: Quick Start S3 bucket Region
+      pAppName: 
+        default: The app name
+      pAppOwner:
+        default: The name of the app owner
+      pAppITOwner: 
+        default: The name or alias of the IT Owner
+      pCostCenter: 
+        default: The Cost Center this workload should be charged to
+      pEnvironment: 
+        default: What environment will this be deployed to?
+      pDeploymentMethod: 
+        default: What method will this be deployed with?
+      pRunType: 
+        default: What runtime is being used?
 Parameters:
   QSS3BucketName:
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
     ConstraintDescription: 'Solution bucket name can include numbers, lowercase
       letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen
       (-).'
-    Default: aws-quickstart
+    Default: soa-app
     Description: 'S3 bucket name for the Quick Start assets. This string can include
       numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
       or end with a hyphen (-).'
     Type: String
+  QSS3KeyPrefix:
+      AllowedPattern: ^[0-9a-zA-Z-/.]*$
+      ConstraintDescription: Quick Start key prefix can include numbers, lowercase letters,
+        uppercase letters, hyphens (-), periods (.) and forward slash (/).
+      Default: cloud-formation-soa/
+      Description: S3 key prefix for the Quick Start assets. Quick Start key prefix
+        can include numbers, lowercase letters, uppercase letters, hyphens (-), periods (.) and
+        forward slash (/).
+      Type: String
+  QSS3BucketRegion:
+    Default: 'us-east-1'
+    Description: Region where the Quick Start S3 bucket (QSS3BucketName) is
+      hosted. When using your own bucket, you must specify this value.
+    Type: String
+
+  pAppName:
+    Type: String 
+    Description: Application name
+    Default: 'soa'
+
+  pAppOwner:
+    Type: String 
+    Description: Application Business Owner
+    Default: 'Oscar'
+
+  pAppITOwner:
+    Type: String 
+    Description: Application IT Owner
+    Default: 'Datta'
+
+  pCostCenter:
+    Type: String 
+    Description: Cost Center
+    Default: '48484'
+
+  pEnvironment:
+    Type: String 
+    Description: Environment
+    Default: dev
+    AllowedValues:
+      - prod
+      - test
+      - dev
+
+  pDeploymentMethod:
+    Type: String 
+    Description: Deployment Tool name
+    Default: CloudFormation
+
+  pRunType:
+    Type: String 
+    Description: KMS CMK Key id for encryption
+    Default: Scheduled
+    AllowedValues:
+      - OnDemand
+      - AutoScaling
+      - Scheduled
+Conditions:
+  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'soa-app']
+Resources:
+  AdvancedConfigDefaultsStack:
+    Type: AWS::CloudFormation::Stack
+    Metadata: { cfn-lint: { config: { ignore_checks: [E9902, W9901] } } }
+    Properties:
+      TemplateURL: !Sub
+        - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}submodules/0-soa-iam.yml'
+        - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+          S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+      Parameters:
+        pAppName: !Ref pAppName
+        pAppOwner: !Ref pAppOwner
+        pAppITOwner: !Ref pAppITOwner
+        pCostCenter: !Ref pCostCenter
+        pEnvironment: !Ref pEnvironment
+        pDeploymentMethod: !Ref pDeploymentMethod
+        pRunType: !Ref pRunType
