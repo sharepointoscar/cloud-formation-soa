@@ -25,10 +25,9 @@ tests:
       QSS3BucketRegion: $[taskcat_current_region]
       
   soa-iam:
-    template: submodules/0-soa-iam.yml
+    #template: submodules/0-soa-iam.yml
     parameters: 
       pAppName: soa
-      pAppOwner: oscar
       pAppITOwner: Datta
       pCostCenter: IT
       pEnvironment: dev
@@ -37,7 +36,7 @@ tests:
     regions:
       - us-west-2 
   soa-mqconf:
-    template: submodules/1-soa-mqconf.yml
+    #template: submodules/1-soa-mqconf.yml
     parameters: 
       pAppName: soa
       pAppOwner: oscar

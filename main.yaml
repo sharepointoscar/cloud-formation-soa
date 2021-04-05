@@ -48,7 +48,7 @@ Parameters:
     ConstraintDescription: 'Solution bucket name can include numbers, lowercase
       letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen
       (-).'
-    Default: soa-app
+    Default: tcat-cloud-formation-soa-ep1y4neb
     Description: 'S3 bucket name for the Quick Start assets. This string can include
       numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
       or end with a hyphen (-).'
@@ -113,12 +113,29 @@ Parameters:
 Conditions:
   UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'soa-app']
 Resources:
-  AdvancedConfigDefaultsStack:
+  IAMStack:
     Type: AWS::CloudFormation::Stack
     Metadata: { cfn-lint: { config: { ignore_checks: [E9902, W9901] } } }
     Properties:
       TemplateURL: !Sub
         - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}submodules/0-soa-iam.yml'
+        - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+          S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+      Parameters:
+        pAppName: !Ref pAppName
+        pAppOwner: !Ref pAppOwner
+        pAppITOwner: !Ref pAppITOwner
+        pCostCenter: !Ref pCostCenter
+        pEnvironment: !Ref pEnvironment
+        pDeploymentMethod: !Ref pDeploymentMethod
+        pRunType: !Ref pRunType
+
+  MQStack:
+    Type: AWS::CloudFormation::Stack
+    Metadata: { cfn-lint: { config: { ignore_checks: [E9902, W9901] } } }
+    Properties:
+      TemplateURL: !Sub
+        - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}submodules/1-soa-mqconf.yml'
         - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
           S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
       Parameters:
