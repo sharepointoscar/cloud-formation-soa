@@ -546,7 +546,7 @@ Resources:
             - 'aurora-db-cluster'
       DBClusterParameterGroupName: !Ref rSOADBClusterParameterGroup
       DBSubnetGroupName: !Ref rSOADBSubnetGroup
-      DeletionProtection: true
+      DeletionProtection: false
       EnableCloudwatchLogsExports:
         - audit
         - error
@@ -590,7 +590,6 @@ Resources:
   rAuroraDBFirstInstance:
     Type: AWS::RDS::DBInstance
     Properties:
-      DeletionProtection: false
       DBInstanceIdentifier: primary
       CopyTagsToSnapshot: true
       DBInstanceClass: !Ref pSOADBInstanceType
@@ -633,7 +632,6 @@ Resources:
     DependsOn:
       - rAuroraDBFirstInstance
     Properties:
-      DeletionProtection: false
       DBInstanceIdentifier: secondary
       CopyTagsToSnapshot: true
       DBInstanceClass: !Ref pSOADBInstanceType
@@ -939,7 +937,7 @@ Resources:
     Type: AWS::CertificateManager::Certificate
     Properties:
       DomainName: !Ref pSOADomainName
-      ValidationMethod: EMAIL
+      ValidationMethod: DNS
       DomainValidationOptions:
         - DomainName: !Ref pSOADomainName
           ValidationDomain: !Ref pValidationDomain

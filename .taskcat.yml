@@ -3,14 +3,16 @@ project:
   name: cloud-formation-soa
   owner: team@ucla.edu
   shorten_stack_name: true
-  s3_bucket: tcat-cloud-formation-soa-ep1y4neb
+  #s3_bucket: tcat-cloud-formation-soa-ep1y4neb
+  s3_regional_buckets: True
   regions:
   - us-west-2
   # main entry point template (main.yaml) should be specified below.
-  template: ./main.yaml
+  template: templates/main.yaml
   parameters:
     QSS3BucketName: $[taskcat_autobucket]
     QSS3BucketRegion: $[taskcat_current_region]
+    QSS3KeyPrefix: cloud-formation-soa/
     pAppName: soa
     pAppOwner: oscar
     pAppITOwner: Datta
@@ -19,64 +21,61 @@ project:
     pDeploymentMethod: CloudFormation
     pRunType: OnDemand
 tests:
-  defaults:
-    parameters: 
-      QSS3BucketName: tcat-cloud-formation-soa-ep1y4neb
-      QSS3BucketRegion: $[taskcat_current_region]
-      
-  soa-iam:
-    #template: submodules/0-soa-iam.yml
-    parameters: 
-      pAppName: soa
-      pAppITOwner: Datta
-      pCostCenter: IT
-      pEnvironment: dev
-      pDeploymentMethod: CloudFormation
-      pRunType: OnDemand
-    regions:
-      - us-west-2 
-  soa-mqconf:
-    #template: submodules/1-soa-mqconf.yml
-    parameters: 
-      pAppName: soa
-      pAppOwner: oscar
-      pAppITOwner: Datta
-      pCostCenter: IT
-      pEnvironment: dev
-      pDeploymentMethod: CloudFormation
-      pRunType: OnDemand
-    regions:
-      - us-west-2 
+  soa-main:
+    template: templates/main.yaml
+  # soa-iam:
+  #   template: submodules/0-soa-iam.yml
+  #   parameters: 
+  #     pAppName: soa
+  #     pAppITOwner: Datta
+  #     pCostCenter: IT
+  #     pEnvironment: dev
+  #     pDeploymentMethod: CloudFormation
+  #     pRunType: OnDemand
+  #   regions:
+  #     - us-west-2 
+  # soa-mqconf:
+  #   template: submodules/1-soa-mqconf.yml
+  #   parameters: 
+  #     pAppName: soa
+  #     pAppOwner: oscar
+  #     pAppITOwner: Datta
+  #     pCostCenter: IT
+  #     pEnvironment: dev
+  #     pDeploymentMethod: CloudFormation
+  #     pRunType: OnDemand
+  #   regions:
+  #     - us-west-2 
 
-  soa-core:
-    template: submodules/2-soa-core.yml
-    parameters: 
-      pVPCID: vpc-bd0344c5
-      pPrvStackSubnets: subnet-172bfa6f,subnet-efdf2da5
-      pVPCCidr: 172.31.32.0/20
-      pVPNCidr: 172.31.32.0/20
-      pSOAAppSecurityGroup: sg-ab9e9983
-      pSOADomainName: CloudFormation
-      pValidationDomain: clusters.sharepointoscar.com
-      pSOAStorageEncrypted: "true"
-      pSOADBEngine: aurora-mysql
-      pSOADBEngineVersion: 5.7.mysql_aurora.2.09.0
-      pSOADBInstanceType: db.r5.large
-      pSOADBBackupRetention: 35
-      pDBMultiAZ: "true"
-      pSOADBBackupWindow: 3:00-4:00
-      pSOADBMaintenanceWindow: sun:5:00-sun:6:00
-      pMQInstanceType: mq.m5.large
-      pMQMultiAZ: "true"
-      pMQConfigId: "c-c45b0899-9e8c-4ae2-9f9f-985c349103e3"
-      pMQConfigRevision: 1
-      pEc2RoleName: soa-dev-ssm-role
-      pAppName: soa
-      pAppOwner: oscar
-      pAppITOwner: Datta
-      pCostCenter: mycostcenter
-      pEnvironment: dev
-      pDeploymentMethod: CloudFormation
-      pRunType: OnDemand
-    regions:
-      - us-west-2 
+  # soa-core:
+  #   template: submodules/2-soa-core.yml
+  #   parameters: 
+  #     pVPCID: vpc-bd0344c5
+  #     pPrvStackSubnets: subnet-172bfa6f,subnet-efdf2da5
+  #     pVPCCidr: 172.31.32.0/20
+  #     pVPNCidr: 172.31.32.0/20
+  #     pSOAAppSecurityGroup: sg-ab9e9983
+  #     pSOADomainName: clusters.sharepointoscar.com
+  #     pValidationDomain: clusters.sharepointoscar.com
+  #     pSOAStorageEncrypted: "true"
+  #     pSOADBEngine: aurora-mysql
+  #     pSOADBEngineVersion: 5.7.mysql_aurora.2.09.0
+  #     pSOADBInstanceType: db.r5.large
+  #     pSOADBBackupRetention: 35
+  #     pDBMultiAZ: "true"
+  #     pSOADBBackupWindow: 3:00-4:00
+  #     pSOADBMaintenanceWindow: sun:5:00-sun:6:00
+  #     pMQInstanceType: mq.m5.large
+  #     pMQMultiAZ: "true"
+  #     pMQConfigId: c-72a78df3-c5ff-46f5-97ea-4e8dd02d42af
+  #     pMQConfigRevision: 1
+  #     pEc2RoleName: soa-dev-ssm-role
+  #     pAppName: soa
+  #     pAppOwner: oscar
+  #     pAppITOwner: Datta
+  #     pCostCenter: mycostcenter
+  #     pEnvironment: dev
+  #     pDeploymentMethod: CloudFormation
+  #     pRunType: OnDemand
+  #   regions:
+  #     - us-west-2 

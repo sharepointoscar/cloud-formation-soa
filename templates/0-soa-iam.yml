@@ -147,3 +147,7 @@ Outputs:
   oAutoScalingARN:
     Description: Autoscaling service linked role ARN
     Value: !Ref rAutoScalingRole
+
+  oInstanceProfileRoleName:
+    Description: Instance Role
+    Value: !Ref rInstanceProfile
