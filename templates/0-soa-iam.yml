@@ -151,3 +151,7 @@ Outputs:
   oInstanceProfileRoleName:
     Description: Instance Role
     Value: !Ref rInstanceProfile
+
+  oSSMRoleName:
+    Description: SSM Role Name
+    Value: !Ref rSSMRole

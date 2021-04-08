@@ -323,7 +323,7 @@ Resources:
         - MQStack
       Properties:
         TemplateURL: !Sub
-          - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/1-soa-core.yml'
+          - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/2-soa-core.yml'
           - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
             S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
         Parameters:
@@ -353,4 +353,4 @@ Resources:
           pMQMultiAZ: !Ref pMQMultiAZ
           pMQConfigId: !GetAtt MQStack.Outputs.oMQConfigurationId
           pMQConfigRevision: !GetAtt MQStack.Outputs.oMQConfigurationRevisionNbr
-          pEc2RoleName: !GetAtt IAMStack.Outputs.oInstanceProfileRoleName
+          pEc2RoleName: !GetAtt IAMStack.Outputs.oSSMRoleName

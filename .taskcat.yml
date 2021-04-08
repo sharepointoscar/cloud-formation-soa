@@ -20,11 +20,28 @@ project:
     pEnvironment: dev
     pDeploymentMethod: CloudFormation
     pRunType: OnDemand
+    pVPCID: vpc-bd0344c5
+    pPrvStackSubnets: subnet-172bfa6f,subnet-efdf2da5
+    pVPCCidr: 172.31.32.0/20
+    pVPNCidr: 172.31.32.0/20
+    pSOAAppSecurityGroup: sg-ab9e9983
+    pSOADomainName: clusters.sharepointoscar.com
+    pValidationDomain: clusters.sharepointoscar.com
+    pSOAStorageEncrypted: "true"
+    pSOADBEngine: aurora-mysql
+    pSOADBEngineVersion: 5.7.mysql_aurora.2.09.0
+    pSOADBInstanceType: db.r5.large
+    pSOADBBackupRetention: 35
+    pDBMultiAZ: "true"
+    pSOADBBackupWindow: 3:00-4:00
+    pSOADBMaintenanceWindow: sun:5:00-sun:6:00
+    pMQInstanceType: mq.m5.large
+    pMQMultiAZ: "true"
 tests:
   soa-main:
     template: templates/main.yaml
   # soa-iam:
-  #   template: submodules/0-soa-iam.yml
+  #   template: templates/0-soa-iam.yml
   #   parameters: 
   #     pAppName: soa
   #     pAppITOwner: Datta

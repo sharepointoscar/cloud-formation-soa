@@ -1,7 +1,7 @@
 # Overview
 
 
-To launch[https://us-west-1.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/template?stackName=soaapp&templateURL=https://tcat-cloud-formation-soa-ep1y4neb.s3.amazonaws.com/cloud-formation-soa/templates/main.yaml]
+To launch[https://us-west-1.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/template?stackName=soaapp&templateURL=https://tcat-bd20e2f3df35552180ddf0646be51084-us-west-2.s3-us-west-2.amazonaws.com/cloud-formation-soa/templates/main.yaml]
 
 # Testing Using Taskcat CLI
 You can test the CloudFormation templates by setting up a CI/CD pipeline, whenever a push to a specific branch happens, the pipeline is triggered.
