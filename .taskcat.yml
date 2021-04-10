@@ -37,6 +37,11 @@ project:
     pSOADBMaintenanceWindow: sun:5:00-sun:6:00
     pMQInstanceType: mq.m5.large
     pMQMultiAZ: "true"
+    pLoadBalancerScheme: internet-facing
+    pSOAAppKeyPairName: genendo-eks
+    pBaseAMI: ami-0518bb0e75d3619ca
+    pSOAAppASGMin: 1
+    pSOAAppASGMax: 2
 tests:
   soa-main:
     template: templates/main.yaml

@@ -1014,3 +1014,7 @@ Outputs:
   oMQConfigurationId:
     Description: MQ Broker Id
     Value: !Ref rMQBroker
+
+  oKmsCmk:
+    Description: KMS Key
+    Value: !Ref rKmsCmk

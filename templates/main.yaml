@@ -20,6 +20,7 @@ Metadata:
         Parameters:
           - pVPCID
           - pPrvStackSubnets
+          - pPubStackSubnets
           - pVPCCidr
           - pSOAAppSecurityGroup
           - pVPNCidr
@@ -35,9 +36,18 @@ Metadata:
           - pSOADBMaintenanceWindow
           - pMQInstanceType
           - pMQMultiAZ
-          #- pMQConfigId
-          #- pMQConfigRevision
-          #- pEc2RoleName
+
+      - Label:
+          default: App Configuration
+        Parameters:
+          - pLoadBalancerScheme
+          - pSOAAppStorageEncrypted
+          - pSOAAppInstanceType
+          - pSOAAppKeyPairName
+          - pBaseAMI
+          - pSOAAppASGMin
+          - pSOAAppASGMax
+
       - Label:
           default: AWS Template configuration S3 Bucket Location
         Parameters:
@@ -70,6 +80,8 @@ Metadata:
         default: VPC
       pPrvStackSubnets:
         default: A comma delimited list of private subnets.
+      pPubStackSubnets:
+        default: Public Subnets to deploy the load balancer
       pVPCCidr:
         default: VPC CIDR
       pSOAAppSecurityGroup:
@@ -100,12 +112,23 @@ Metadata:
         default: The MQ instance type
       pMQMultiAZ:
         default: The MQ is deployed to multiple Availability Zones
-      # pMQConfigId:
-      #   default: The configuration id of the existing MQ
-      # pMQConfigRevision:
-      #   default: The MQ Configuration Revision ID
-      # pEc2RoleName:
-      #   default: The EC2 Role name created by IAM stack
+      pLoadBalancerScheme:
+        default: Load balancer visibility
+      # pSOAAppCert:
+      #   default: SOAApp certificate ARN
+      # pSOAAppKMSID:
+      #   default: KMS CMK Key id for encryption
+      pSOAAppInstanceType:
+        default: SOAApp ec2 instance type
+      pSOAAppKeyPairName:
+        default: EC2 instance login key pair name
+      pBaseAMI:
+        default: AMI Id of SOAApp app instance
+      pSOAAppASGMin:
+        default:  Min nbr of instances to be launched with auto scaling group
+      pSOAAppASGMax:
+        default: Max nbr of instances to be launched with auto scaling group  
+      
 
 Parameters:
   QSS3BucketName:
@@ -161,12 +184,10 @@ Parameters:
       - prod
       - test
       - dev
-
   pDeploymentMethod:
     Type: String 
     Description: Deployment Tool name
     Default: CloudFormation
-
   pRunType:
     Type: String 
     Description: KMS CMK Key id for encryption
@@ -175,44 +196,49 @@ Parameters:
       - OnDemand
       - AutoScaling
       - Scheduled
-
   pVPCID:
     Description: VPC id for deployment of this stack.
     Type: String
     Default: vpc-bd0344c5
-
   pPrvStackSubnets:
     Description: Private Subnets to deploy the app servers
     Type: String
     Default: subnet-172bfa6f,subnet-efdf2da5
-
+  pPubStackSubnets:
+      Description: Public Subnets to deploy the load balancer
+      Type: String
+      Default: subnet-75b3e85e,subnet-52df7c0f
+  pLoadBalancerScheme:
+    Description: Load balancer visibility
+    Type: String
+    AllowedValues:
+     - internal
+     - internet-facing
+  pSOAAppKeyPairName:
+    Description: EC2 instance login key pair name
+    Type: AWS::EC2::KeyPair::KeyName
   pVPCCidr:
     Description: VPC cidr
     Type: String
     Default: 172.31.32.0/20
     AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
-
   pVPNCidr:
     Description: VPN cidr
     Type: String
     Default: 172.31.32.0/20
     AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
-
   pSOAAppSecurityGroup:
     Description: SOA app ec2 instance security group
     Type: String
     Default: sg-ab9e9983
-
   pSOADomainName:
     Description: soa domain name
     Type: String
     Default: clusters.sharepointoscar.com
-
   pValidationDomain:
     Description: Validation domain name
     Type: String
     Default: clusters.sharepointoscar.com
-
   pSOAStorageEncrypted:
     Type: String
     Description: Encrypt db storage
@@ -220,27 +246,22 @@ Parameters:
     AllowedValues:
       - true
       - false
-
   pSOADBEngine:
     Type: String
     Description: Database Engine
     Default: aurora-mysql
-
   pSOADBEngineVersion:
     Type: String
     Description: Database version
     Default: 5.7.mysql_aurora.2.09.0
-
   pSOADBInstanceType:
     Type: String
     Description: DB instance type
     Default: db.r5.large
-
   pSOADBBackupRetention:
     Type: String
     Description: DB backup retention in days 0 - 35
     Default: 35
-
   pDBMultiAZ:
     Type: String
     Description: High availability/Multi AZ deployement
@@ -248,17 +269,14 @@ Parameters:
     AllowedValues:
       - true
       - false
-
   pSOADBBackupWindow:
     Type: String
     Description: Backup window in UTC format hh24:mi-hh24:mi should not be same as Maintenance Window
     Default: 3:00-4:00
-
   pSOADBMaintenanceWindow:
     Type: String
     Description: Maintenance window in UTC format ddd:hh24:mi-ddd:hh24:mi should not be same as Backup Window
     Default: sun:5:00-sun:6:00
-
   pMQInstanceType:
     Type: String
     Description: MQ broker ec2 instance type
@@ -267,7 +285,6 @@ Parameters:
       - mq.t2.micro
       - mq.m5.large
       - mq.m5.xlarge
-
   pMQMultiAZ:
     Type: String
     Description: Deploy in HA configuration
@@ -275,7 +292,33 @@ Parameters:
     AllowedValues:
         - true
         - false
-
+  pBaseAMI:
+    Description: AMI Id of SOAApp app instance
+    Type: String
+    Default: ami-0518bb0e75d3619ca
+  pSOAAppASGMin:
+    Description: Min nbr of instances to be launched with auto scaling group
+    Type: String
+    Default: 1
+  pSOAAppASGMax:
+    Description: Max nbr of instances to be launched with auto scaling group
+    Type: String
+    Default: 2
+  pSOAAppStorageEncrypted:
+    Type: String
+    Description: Encrypt db & efs storage
+    Default: "true"
+    AllowedValues:
+      - True
+      - False
+  pSOAAppInstanceType:
+    Type: String
+    Description: SOAApp ec2 instance type
+    Default: t2.small
+    AllowedValues:
+      - t2.small
+      - m5.large
+      - m5.xlarge
 Conditions:
   UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
 Resources:
@@ -354,3 +397,37 @@ Resources:
           pMQConfigId: !GetAtt MQStack.Outputs.oMQConfigurationId
           pMQConfigRevision: !GetAtt MQStack.Outputs.oMQConfigurationRevisionNbr
           pEc2RoleName: !GetAtt IAMStack.Outputs.oSSMRoleName
+
+  AppStack:
+    Type: AWS::CloudFormation::Stack
+    Metadata: 
+      cfn-lint: { config: { ignore_checks: [ W9901 ] } }
+    DependsOn: 
+      - CoreStack
+    Properties:
+      TemplateURL: !Sub
+        - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/3-soa-app.yml'
+        - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+          S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+      Parameters:
+        pAppName: !Ref pAppName
+        pAppOwner: !Ref pAppOwner
+        pAppITOwner: !Ref pAppITOwner
+        pCostCenter: !Ref pCostCenter
+        pEnvironment: !Ref pEnvironment
+        pDeploymentMethod: !Ref pDeploymentMethod
+        pRunType: !Ref pRunType
+        pVPCID: !Ref pVPCID
+        pVPCCidr: !Ref pVPCCidr
+        pPrvStackSubnets: !Ref pPrvStackSubnets
+        pPubStackSubnets: !Ref pPubStackSubnets
+        pLoadBalancerScheme: !Ref pLoadBalancerScheme 
+        pSOAAppCert: !GetAtt CoreStack.Outputs.osoaCertificate
+        pSOAAppStorageEncrypted: !Ref pSOAAppStorageEncrypted
+        pSOAAppKMSID: !GetAtt CoreStack.Outputs.oKmsCmk
+        pSOAAppInstanceType: !Ref pSOAAppInstanceType
+        pSOAAppKeyPairName: !Ref pSOAAppKeyPairName
+        pBaseAMI: !Ref pBaseAMI
+        pSOAAppASGMin: !Ref pSOAAppASGMin
+        pSOAAppASGMax: !Ref pSOAAppASGMax
+        pAutoScalingServiceRoleARN: !GetAtt IAMStack.Outputs.oAutoScalingARN

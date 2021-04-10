@@ -146,12 +146,10 @@ Resources:
 Outputs:
   oAutoScalingARN:
     Description: Autoscaling service linked role ARN
-    Value: !Ref rAutoScalingRole
-
+    Value: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/autoscaling.amazonaws.com/${rAutoScalingRole}
   oInstanceProfileRoleName:
     Description: Instance Role
     Value: !Ref rInstanceProfile
-
   oSSMRoleName:
     Description: SSM Role Name
     Value: !Ref rSSMRole
