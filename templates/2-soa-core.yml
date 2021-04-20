@@ -228,6 +228,7 @@ Parameters:
       - prod
       - test
       - dev
+      - ci
 
   pDeploymentMethod:
     Type: String
@@ -590,7 +591,12 @@ Resources:
   rAuroraDBFirstInstance:
     Type: AWS::RDS::DBInstance
     Properties:
-      DBInstanceIdentifier: primary
+      DBInstanceIdentifier:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'aurora-db-primary'
       CopyTagsToSnapshot: true
       DBInstanceClass: !Ref pSOADBInstanceType
       DBClusterIdentifier: !Ref rAuroraMySqlCluster
@@ -632,7 +638,12 @@ Resources:
     DependsOn:
       - rAuroraDBFirstInstance
     Properties:
-      DBInstanceIdentifier: secondary
+      DBInstanceIdentifier:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'aurora-db-secondary'
       CopyTagsToSnapshot: true
       DBInstanceClass: !Ref pSOADBInstanceType
       DBClusterIdentifier: !Ref rAuroraMySqlCluster

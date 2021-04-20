@@ -9,15 +9,15 @@
 #      Successfully deployed MQ Configuration
 #
 #    Provisions:
-#     ALB           - SG, Listener, Target Group 
+#     ALB           - SG, Listener, Target Group
 #     Autoscaling   - Launch template, ASG
 #
-#    Provision Time:  
+#    Provision Time:
 #     15 mins
-# 
+#
 #    Deployment Instructions:
 #     1. Update core template with app security group id through a change set
-# 
+#
 #####################################################################################################
 #      DATE     #    MODIFIED BY     #                      DESCRIPTION
 #####################################################################################################
@@ -32,10 +32,10 @@ Metadata:
       - Label:
           default: Networking
         Parameters:
-          - pVPCID 
+          - pVPCID
           - pPrvStackSubnets
           - pPubStackSubnets
-          - pVPCCidr 
+          - pVPCCidr
 
       - Label:
           default: Load Balancer
@@ -168,6 +168,7 @@ Parameters:
       - prod
       - test
       - dev
+      - ci
 
   pDeploymentMethod:
     Type: String
@@ -283,7 +284,7 @@ Resources:
       - Type: redirect
         RedirectConfig:
           Protocol: HTTPS
-          Port: 443
+          Port: "443"
           Host: "#{host}"
           Path: "/#{path}"
           Query: "#{query}"

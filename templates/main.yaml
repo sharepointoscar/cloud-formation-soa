@@ -62,19 +62,19 @@ Metadata:
         default: Quick Start S3 key prefix
       QSS3BucketRegion:
         default: Quick Start S3 bucket Region
-      pAppName: 
+      pAppName:
         default: The app name
       pAppOwner:
         default: The name of the app owner
-      pAppITOwner: 
+      pAppITOwner:
         default: The name or alias of the IT Owner
-      pCostCenter: 
+      pCostCenter:
         default: The Cost Center this workload should be charged to
-      pEnvironment: 
+      pEnvironment:
         default: What environment will this be deployed to?
-      pDeploymentMethod: 
+      pDeploymentMethod:
         default: What method will this be deployed with?
-      pRunType: 
+      pRunType:
         default: What runtime is being used?
       pVPCID:
         default: VPC
@@ -127,8 +127,8 @@ Metadata:
       pSOAAppASGMin:
         default:  Min nbr of instances to be launched with auto scaling group
       pSOAAppASGMax:
-        default: Max nbr of instances to be launched with auto scaling group  
-      
+        default: Max nbr of instances to be launched with auto scaling group
+
 
 Parameters:
   QSS3BucketName:
@@ -157,39 +157,40 @@ Parameters:
     Type: String
 
   pAppName:
-    Type: String 
+    Type: String
     Description: Application name
     Default: 'soa'
 
   pAppOwner:
-    Type: String 
+    Type: String
     Description: Application Business Owner
     Default: 'Oscar'
 
   pAppITOwner:
-    Type: String 
+    Type: String
     Description: Application IT Owner
     Default: 'Datta'
 
   pCostCenter:
-    Type: String 
+    Type: String
     Description: Cost Center
     Default: '48484'
 
   pEnvironment:
-    Type: String 
+    Type: String
     Description: Environment
-    Default: dev
+    Default: ci
     AllowedValues:
       - prod
       - test
       - dev
+      - ci
   pDeploymentMethod:
-    Type: String 
+    Type: String
     Description: Deployment Tool name
     Default: CloudFormation
   pRunType:
-    Type: String 
+    Type: String
     Description: KMS CMK Key id for encryption
     Default: Scheduled
     AllowedValues:
@@ -307,10 +308,10 @@ Parameters:
   pSOAAppStorageEncrypted:
     Type: String
     Description: Encrypt db & efs storage
-    Default: "true"
+    Default: true
     AllowedValues:
-      - True
-      - False
+      - true
+      - false
   pSOAAppInstanceType:
     Type: String
     Description: SOAApp ec2 instance type
@@ -342,7 +343,7 @@ Resources:
   MQStack:
     Type: AWS::CloudFormation::Stack
     Metadata: { cfn-lint: { config: { ignore_checks: [E9902, W9901] } } }
-    DependsOn: 
+    DependsOn:
       - IAMStack
     Properties:
       TemplateURL: !Sub
@@ -359,9 +360,9 @@ Resources:
         pRunType: !Ref pRunType
   CoreStack:
       Type: AWS::CloudFormation::Stack
-      Metadata: 
+      Metadata:
         cfn-lint: { config: { ignore_checks: [ W9901 ] } }
-      DependsOn: 
+      DependsOn:
         - IAMStack
         - MQStack
       Properties:
@@ -400,9 +401,9 @@ Resources:
 
   AppStack:
     Type: AWS::CloudFormation::Stack
-    Metadata: 
+    Metadata:
       cfn-lint: { config: { ignore_checks: [ W9901 ] } }
-    DependsOn: 
+    DependsOn:
       - CoreStack
     Properties:
       TemplateURL: !Sub
@@ -421,7 +422,7 @@ Resources:
         pVPCCidr: !Ref pVPCCidr
         pPrvStackSubnets: !Ref pPrvStackSubnets
         pPubStackSubnets: !Ref pPubStackSubnets
-        pLoadBalancerScheme: !Ref pLoadBalancerScheme 
+        pLoadBalancerScheme: !Ref pLoadBalancerScheme
         pSOAAppCert: !GetAtt CoreStack.Outputs.osoaCertificate
         pSOAAppStorageEncrypted: !Ref pSOAAppStorageEncrypted
         pSOAAppKMSID: !GetAtt CoreStack.Outputs.oKmsCmk

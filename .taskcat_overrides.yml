@@ -5,7 +5,7 @@
     pAppOwner: Datta
     pAppITOwner: Datta
     pCostCenter: ITSVCS
-    pEnvironment: tcatdev
+    pEnvironment: ci
     pDeploymentMethod: CloudFormation
     pRunType: OnDemand
     pVPCID: vpc-0036e64ebfc3da47a
