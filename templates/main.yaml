@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Deploys the UCLA Dashboard app and related resources.
+Description: Deploys the UCLA Dashboard app and related resources in designated account.
 Metadata:
   QuickStartDocumentation:
     EntrypointName: "Launch Infrastructure for the Dashboard App"
