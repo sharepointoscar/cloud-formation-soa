@@ -6,13 +6,13 @@
 #
 #    Provisions:
 #     Amazon MQ     - Configuration
-# 
-#    Provision Time:  
+#
+#    Provision Time:
 #     5 mins
-# 
+#
 #    Deployment Instructions:
 #     NONE
-# 
+#
 #####################################################################################################
 #      DATE     #    MODIFIED BY     #                      DESCRIPTION
 #####################################################################################################
@@ -36,37 +36,38 @@ Metadata:
 
 Parameters:
   pAppName:
-    Type: String 
+    Type: String
     Description: Application name
     Default: soa
 
   pAppOwner:
-    Type: String 
+    Type: String
     Description: Application Business Owner
 
   pAppITOwner:
-    Type: String 
+    Type: String
     Description: Application IT Owner
 
   pCostCenter:
-    Type: String 
+    Type: String
     Description: Cost Center
 
   pEnvironment:
-    Type: String 
+    Type: String
     Description: Environment
     AllowedValues:
       - prod
       - test
       - dev
+      - ci
 
   pDeploymentMethod:
-    Type: String 
+    Type: String
     Description: Deployment Tool name
     Default: CloudFormation
 
   pRunType:
-    Type: String 
+    Type: String
     Description: KMS CMK Key id for encryption
     Default: Scheduled
     AllowedValues:
@@ -75,12 +76,12 @@ Parameters:
       - Scheduled
 
 Resources:
-  rMQConfiguration: 
+  rMQConfiguration:
     Type: "AWS::AmazonMQ::Configuration"
-    Properties: 
+    Properties:
       EngineType: ACTIVEMQ
       EngineVersion: "5.15.9"
-      Name: 
+      Name:
         !Join
           - '-'
           - - !Ref pAppName
@@ -108,7 +109,7 @@ Resources:
           Value: !Ref pRunType
         - Key: DeploymentMethod
           Value: !Ref pDeploymentMethod
-      Data: 
+      Data:
         ? "Fn::Base64"
         : |
             <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -129,7 +130,7 @@ Resources:
               Virtual destinations let you configure advanced routing of messages between destinations.
               For more information, see http://activemq.apache.org/virtual-destinations.html
               -->
-              <!-- 
+              <!--
               <destinationInterceptors>
                 <mirroredQueue copyMessage="true" postfix=".qmirror" prefix=""/>
                 <virtualDestinationInterceptor>
