@@ -67,6 +67,7 @@ Parameters:
       - prod
       - test
       - dev
+      - ci
 
   pDeploymentMethod:
     Type: String
