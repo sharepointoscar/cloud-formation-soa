@@ -17,7 +17,6 @@
     pSOADomainName: 607856a5.dev.r53.aws.it.ucla.edu
     pValidationDomain: 607856a5.dev.r53.aws.it.ucla.edu
     pSOAStorageEncrypted: "true"
-    pSOAAppStorageEncrypted: "true"
     pSOADBEngine: aurora-mysql
     pSOADBEngineVersion: 5.7.mysql_aurora.2.09.0
     pSOADBInstanceType: db.r5.large
