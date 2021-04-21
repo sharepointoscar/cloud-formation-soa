@@ -46,7 +46,7 @@ Metadata:
       - Label:
           default: Encryption
         Parameters:
-          - pSOAAppStorageEncrypted
+          - pSOAStorageEncrypted
           - pSOAAppKMSID
       # need scailing policies
       - Label:
@@ -103,7 +103,7 @@ Parameters:
     Type: CommaDelimitedList
     Description: SOAApp certificate ARN
 
-  pSOAAppStorageEncrypted:
+  pSOAStorageEncrypted:
     Type: String
     Description: Encrypt db & efs storage
     Default: True
@@ -185,7 +185,7 @@ Parameters:
       - Scheduled
 
 Conditions:
-  cDeployEncrypted: !Equals [!Ref pSOAAppStorageEncrypted, True]
+  cDeployEncrypted: !Equals [!Ref pSOAStorageEncrypted, True]
 
 Resources:
   rSOAAppAlb:
@@ -446,7 +446,7 @@ Resources:
           Ebs:
             VolumeSize: 30
             VolumeType: "gp2"
-            Encrypted: !Ref pSOAAppStorageEncrypted
+            Encrypted: !Ref pSOAStorageEncrypted
             KmsKeyId: !If [cDeployEncrypted, !Ref pSOAAppKMSID, !Ref "AWS::NoValue"]
         TagSpecifications:
         - ResourceType: instance

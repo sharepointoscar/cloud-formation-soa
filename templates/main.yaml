@@ -41,7 +41,7 @@ Metadata:
           default: App Configuration
         Parameters:
           - pLoadBalancerScheme
-          - pSOAAppStorageEncrypted
+          - pSOAStorageEncrypted
           - pSOAAppInstanceType
           - pSOAAppKeyPairName
           - pBaseAMI
@@ -240,13 +240,6 @@ Parameters:
     Description: Validation domain name
     Type: String
     Default: clusters.sharepointoscar.com
-  pSOAStorageEncrypted:
-    Type: String
-    Description: Encrypt db storage
-    Default: true
-    AllowedValues:
-      - true
-      - false
   pSOADBEngine:
     Type: String
     Description: Database Engine
@@ -305,7 +298,7 @@ Parameters:
     Description: Max nbr of instances to be launched with auto scaling group
     Type: String
     Default: 2
-  pSOAAppStorageEncrypted:
+  pSOAStorageEncrypted:
     Type: String
     Description: Encrypt db & efs storage
     Default: true
@@ -424,7 +417,7 @@ Resources:
         pPubStackSubnets: !Ref pPubStackSubnets
         pLoadBalancerScheme: !Ref pLoadBalancerScheme
         pSOAAppCert: !GetAtt CoreStack.Outputs.osoaCertificate
-        pSOAAppStorageEncrypted: !Ref pSOAAppStorageEncrypted
+        pSOAStorageEncrypted: !Ref pSOAStorageEncrypted
         pSOAAppKMSID: !GetAtt CoreStack.Outputs.oKmsCmk
         pSOAAppInstanceType: !Ref pSOAAppInstanceType
         pSOAAppKeyPairName: !Ref pSOAAppKeyPairName
