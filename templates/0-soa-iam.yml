@@ -6,13 +6,13 @@
 #
 #    Provisions:
 #     Role                - ec2 Instance role for ssm/s3 access
-#     Service Linked Role - autoscaling service linked role 
-# 
+#     Service Linked Role - autoscaling service linked role
+#
 #    Provision Time:  5 mins
-# 
+#
 #    Deployment Instructions:
 #     NONE
-# 
+#
 #####################################################################################################
 #      DATE     #    MODIFIED BY     #                      DESCRIPTION
 #####################################################################################################
@@ -36,37 +36,38 @@ Metadata:
 
 Parameters:
   pAppName:
-    Type: String 
+    Type: String
     Description: Application name
     Default: soa
 
   pAppOwner:
-    Type: String 
+    Type: String
     Description: Application Business Owner
 
   pAppITOwner:
-    Type: String 
+    Type: String
     Description: Application IT Owner
 
   pCostCenter:
-    Type: String 
+    Type: String
     Description: Cost Center
 
   pEnvironment:
-    Type: String 
+    Type: String
     Description: Environment
     AllowedValues:
       - prod
       - test
       - dev
+      - ci
 
   pDeploymentMethod:
-    Type: String 
+    Type: String
     Description: Deployment Tool name
     Default: CloudFormation
 
   pRunType:
-    Type: String 
+    Type: String
     Description: KMS CMK Key id for encryption
     Default: Scheduled
     AllowedValues:
@@ -80,7 +81,7 @@ Resources:
     Properties:
       AWSServiceName: autoscaling.amazonaws.com
       Description: autoscaling service linked role
-      CustomSuffix: 
+      CustomSuffix:
         !Join
           - '_'
           - - !Ref pAppName
@@ -132,18 +133,24 @@ Resources:
 
   rInstanceProfile:
     Type: AWS::IAM::InstanceProfile
-    Properties: 
-      InstanceProfileName: 
+    Properties:
+      InstanceProfileName:
         !Join
           - '-'
           - - !Ref pAppName
             - !Ref pEnvironment
             - 'ec2-instance-profile'
-      Roles: 
+      Roles:
         - !Ref rSSMRole
 
 
 Outputs:
   oAutoScalingARN:
     Description: Autoscaling service linked role ARN
-    Value: !Ref rAutoScalingRole
+    Value: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/autoscaling.amazonaws.com/${rAutoScalingRole}
+  oInstanceProfileRoleName:
+    Description: Instance Role
+    Value: !Ref rInstanceProfile
+  oSSMRoleName:
+    Description: SSM Role Name
+    Value: !Ref rSSMRole

@@ -132,10 +132,10 @@ Parameters:
   pSOAStorageEncrypted:
     Type: String
     Description: Encrypt db storage
-    Default: True
+    Default: true
     AllowedValues:
-      - True
-      - False
+      - true
+      - false
 
   pSOADBEngine:
     Type: String
@@ -228,6 +228,7 @@ Parameters:
       - prod
       - test
       - dev
+      - ci
 
   pDeploymentMethod:
     Type: String
@@ -244,7 +245,7 @@ Parameters:
       - Scheduled
 
 Conditions:
-  cDeployEncrypted: !Equals [!Ref pSOAStorageEncrypted, True]
+  cDeployEncrypted: !Equals [!Ref pSOAStorageEncrypted, true]
   cDeployMQMultiAZ: !Equals [!Ref pMQMultiAZ, true]
   cDeployDBMultiAZ: !Equals [!Ref pDBMultiAZ, true]
   cPerfInsights: !Equals [!Ref pEnvironment, "prod"]
@@ -546,7 +547,7 @@ Resources:
             - 'aurora-db-cluster'
       DBClusterParameterGroupName: !Ref rSOADBClusterParameterGroup
       DBSubnetGroupName: !Ref rSOADBSubnetGroup
-      DeletionProtection: true
+      DeletionProtection: false
       EnableCloudwatchLogsExports:
         - audit
         - error
@@ -590,7 +591,12 @@ Resources:
   rAuroraDBFirstInstance:
     Type: AWS::RDS::DBInstance
     Properties:
-      DBInstanceIdentifier: primary
+      DBInstanceIdentifier:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'aurora-db-primary'
       CopyTagsToSnapshot: true
       DBInstanceClass: !Ref pSOADBInstanceType
       DBClusterIdentifier: !Ref rAuroraMySqlCluster
@@ -632,7 +638,12 @@ Resources:
     DependsOn:
       - rAuroraDBFirstInstance
     Properties:
-      DBInstanceIdentifier: secondary
+      DBInstanceIdentifier:
+        !Join
+          - '-'
+          - - !Ref pAppName
+            - !Ref pEnvironment
+            - 'aurora-db-secondary'
       CopyTagsToSnapshot: true
       DBInstanceClass: !Ref pSOADBInstanceType
       DBClusterIdentifier: !Ref rAuroraMySqlCluster
@@ -738,7 +749,7 @@ Resources:
       ToPort: 61617
       SourceSecurityGroupId: !Ref pSOAAppSecurityGroup
 
-  rAccessFromVPCtoMQ:
+  rAccessFromVPCtoMQ1:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
       GroupId: !Ref rMQSecGrp
@@ -937,7 +948,7 @@ Resources:
     Type: AWS::CertificateManager::Certificate
     Properties:
       DomainName: !Ref pSOADomainName
-      ValidationMethod: EMAIL
+      ValidationMethod: DNS
       DomainValidationOptions:
         - DomainName: !Ref pSOADomainName
           ValidationDomain: !Ref pValidationDomain
@@ -1014,3 +1025,7 @@ Outputs:
   oMQConfigurationId:
     Description: MQ Broker Id
     Value: !Ref rMQBroker
+
+  oKmsCmk:
+    Description: KMS Key
+    Value: !Ref rKmsCmk
