@@ -41,7 +41,7 @@ Metadata:
           default: Load Balancer
         Parameters:
           - pLoadBalancerScheme
-          - pSOAAppCert
+          - pSOAAppCertId
 
       - Label:
           default: Encryption
@@ -99,9 +99,9 @@ Parameters:
      - internal
      - internet-facing
 
-  pSOAAppCert:
-    Type: CommaDelimitedList
-    Description: SOAApp certificate ARN
+  pSOAAppCertId:
+    Type: String
+    Description: SOAApp certificate Id (not ARN)
 
   pSOAStorageEncrypted:
     Type: String
@@ -177,7 +177,7 @@ Parameters:
 
   pRunType:
     Type: String
-    Description: KMS CMK Key id for encryption
+    Description: How are you running this template
     Default: Scheduled
     AllowedValues:
       - OnDemand
@@ -268,8 +268,11 @@ Resources:
     Properties:
       Certificates:
       - CertificateArn: !Join
-        - ''
-        - !Ref pSOAAppCert
+          - ":"
+          - - arn:aws:acm
+            - !Ref AWS::Region
+            - !Ref AWS::AccountId
+            - !Join ["/", ["certificate", !Ref pSOAAppCertId ]]
       DefaultActions:
       - Type: forward
         TargetGroupArn: !Ref rSOAAppTargetGroup

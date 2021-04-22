@@ -24,8 +24,6 @@ Metadata:
           - pVPCCidr
           - pSOAAppSecurityGroup
           - pVPNCidr
-          - pSOADomainName
-          - pValidationDomain
           - pSOAStorageEncrypted
           - pSOADBEngine
           - pSOADBEngineVersion
@@ -41,6 +39,7 @@ Metadata:
           default: App Configuration
         Parameters:
           - pLoadBalancerScheme
+          - pSOAAppCertId
           - pSOAStorageEncrypted
           - pSOAAppInstanceType
           - pSOAAppKeyPairName
@@ -88,10 +87,6 @@ Metadata:
         default: Security Group
       pVPNCidr:
         default: VPN CIDR
-      pSOADomainName:
-        default: A domain i.e. ucla.edu
-      pValidationDomain:
-        default: A validation domain i.e. ucla.edu
       pSOAStorageEncrypted:
         default: Encrypt Storage
       pSOADBEngine:
@@ -114,8 +109,8 @@ Metadata:
         default: The MQ is deployed to multiple Availability Zones
       pLoadBalancerScheme:
         default: Load balancer visibility
-      # pSOAAppCert:
-      #   default: SOAApp certificate ARN
+      pSOAAppCertId:
+        default: SOAApp certificate Id (not the ARN)
       # pSOAAppKMSID:
       #   default: KMS CMK Key id for encryption
       pSOAAppInstanceType:
@@ -232,14 +227,6 @@ Parameters:
     Description: SOA app ec2 instance security group
     Type: String
     Default: sg-ab9e9983
-  pSOADomainName:
-    Description: soa domain name
-    Type: String
-    Default: clusters.sharepointoscar.com
-  pValidationDomain:
-    Description: Validation domain name
-    Type: String
-    Default: clusters.sharepointoscar.com
   pSOADBEngine:
     Type: String
     Description: Database Engine
@@ -298,6 +285,10 @@ Parameters:
     Description: Max nbr of instances to be launched with auto scaling group
     Type: String
     Default: 2
+  pSOAAppCertId:
+    Description: The existing certificate Id (not ARN) you would like to use.
+    Type: String
+    Default: ""
   pSOAStorageEncrypted:
     Type: String
     Description: Encrypt db & efs storage
@@ -376,8 +367,6 @@ Resources:
           pVPCCidr: !Ref pVPCCidr
           pSOAAppSecurityGroup: !Ref pSOAAppSecurityGroup
           pVPNCidr: !Ref pVPNCidr
-          pSOADomainName: !Ref pSOADomainName
-          pValidationDomain: !Ref pValidationDomain
           pSOAStorageEncrypted: !Ref pSOAStorageEncrypted
           pSOADBEngine: !Ref pSOADBEngine
           pSOADBEngineVersion: !Ref pSOADBEngineVersion
@@ -416,7 +405,7 @@ Resources:
         pPrvStackSubnets: !Ref pPrvStackSubnets
         pPubStackSubnets: !Ref pPubStackSubnets
         pLoadBalancerScheme: !Ref pLoadBalancerScheme
-        pSOAAppCert: !GetAtt CoreStack.Outputs.osoaCertificate
+        pSOAAppCertId: !Ref pSOAAppCertId
         pSOAStorageEncrypted: !Ref pSOAStorageEncrypted
         pSOAAppKMSID: !GetAtt CoreStack.Outputs.oKmsCmk
         pSOAAppInstanceType: !Ref pSOAAppInstanceType

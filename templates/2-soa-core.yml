@@ -8,7 +8,6 @@
 #     KMS           - A new key to encrypt DB storage
 #     Amazon MQ     - Broker
 #     RDS           - Aurora MySQL
-#     Certificate   - SSL Certificate
 #     Secrets       - DB and MQ secrets
 #     IAM Policy    - IAM policy attached to instance role to retreive secrets and ssm param
 #
@@ -41,12 +40,6 @@ Metadata:
           - pVPCCidr
           - pSOAAppSecurityGroup
           - pVPNCidr
-
-      - Label:
-          default: Certificate
-        Parameters:
-          - pSOADomainName
-          - pValidationDomain
 
       - Label:
           default: KMS
@@ -119,15 +112,6 @@ Parameters:
     Description: SOA app ec2 instance security group
     Type: String
     Default: sg-xxxx
-
-  pSOADomainName:
-    Description: soa domain name
-    Type: String
-
-  pValidationDomain:
-    Description: Validation domain name
-    Type: String
-    Default: ucla.edu
 
   pSOAStorageEncrypted:
     Type: String
@@ -941,39 +925,6 @@ Resources:
         - Key: DeploymentMethod
           Value: !Ref pDeploymentMethod
 
-  rsoaCert:
-    DependsOn:
-      - rMQBroker
-      - rAuroraDBFirstInstance
-    Type: AWS::CertificateManager::Certificate
-    Properties:
-      DomainName: !Ref pSOADomainName
-      ValidationMethod: DNS
-      DomainValidationOptions:
-        - DomainName: !Ref pSOADomainName
-          ValidationDomain: !Ref pValidationDomain
-      Tags:
-        - Key: Name
-          Value:
-            !Join
-              - '-'
-              - - !Ref pAppName
-                - !Ref pEnvironment
-                - 'cert'
-        - Key: AppName
-          Value: !Ref pAppName
-        - Key: AppOwner
-          Value: !Ref pAppOwner
-        - Key: AppITOwner
-          Value: !Ref pAppITOwner
-        - Key: CostCenter
-          Value: !Ref pCostCenter
-        - Key: Environment
-          Value: !Ref pEnvironment
-        - Key: RunType
-          Value: !Ref pRunType
-        - Key: DeploymentMethod
-          Value: !Ref pDeploymentMethod
 
   rSSMParamDB:
     Type: AWS::SSM::Parameter
@@ -1014,9 +965,6 @@ Resources:
         - !Ref pEc2RoleName
 
 Outputs:
-  osoaCertificate:
-    Description: output for soa cert
-    Value: !Ref rsoaCert
 
   oMQConfigurationArn:
     Description: MQ Broker ARN

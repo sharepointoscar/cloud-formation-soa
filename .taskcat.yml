@@ -22,11 +22,11 @@ project:
     pRunType: OnDemand
     pVPCID: vpc-bd0344c5
     pPrvStackSubnets: subnet-172bfa6f,subnet-efdf2da5
+    pPubStackSubnets: subnet-75b3e85e,subnet-52df7c0f
     pVPCCidr: 172.31.32.0/20
     pVPNCidr: 172.31.32.0/20
     pSOAAppSecurityGroup: sg-ab9e9983
-    pSOADomainName: clusters.sharepointoscar.com
-    pValidationDomain: clusters.sharepointoscar.com
+    pSOAAppCertId: 29b5f0ca-c050-4011-abf8-24228ca2fd06
     pSOAStorageEncrypted: "true"
     pSOADBEngine: aurora-mysql
     pSOADBEngineVersion: 5.7.mysql_aurora.2.09.0
@@ -57,7 +57,7 @@ tests:
   #   regions:
   #     - us-west-2 
   # soa-mqconf:
-  #   template: submodules/1-soa-mqconf.yml
+  #   template: templates/1-soa-mqconf.yml
   #   parameters: 
   #     pAppName: soa
   #     pAppOwner: oscar
@@ -70,15 +70,13 @@ tests:
   #     - us-west-2 
 
   # soa-core:
-  #   template: submodules/2-soa-core.yml
+  #   template: templates/2-soa-core.yml
   #   parameters: 
   #     pVPCID: vpc-bd0344c5
   #     pPrvStackSubnets: subnet-172bfa6f,subnet-efdf2da5
   #     pVPCCidr: 172.31.32.0/20
   #     pVPNCidr: 172.31.32.0/20
   #     pSOAAppSecurityGroup: sg-ab9e9983
-  #     pSOADomainName: clusters.sharepointoscar.com
-  #     pValidationDomain: clusters.sharepointoscar.com
   #     pSOAStorageEncrypted: "true"
   #     pSOADBEngine: aurora-mysql
   #     pSOADBEngineVersion: 5.7.mysql_aurora.2.09.0
@@ -92,6 +90,33 @@ tests:
   #     pMQConfigId: c-72a78df3-c5ff-46f5-97ea-4e8dd02d42af
   #     pMQConfigRevision: 1
   #     pEc2RoleName: soa-dev-ssm-role
+  #     pAppName: soa
+  #     pAppOwner: oscar
+  #     pAppITOwner: Datta
+  #     pCostCenter: mycostcenter
+  #     pEnvironment: dev
+  #     pDeploymentMethod: CloudFormation
+  #     pRunType: OnDemand
+  #   regions:
+  #     - us-west-2 
+
+  # soa-app:
+  #   template: templates/3-soa-app.yml
+  #   parameters: 
+  #     pVPCID: vpc-bd0344c5
+  #     pPrvStackSubnets: subnet-172bfa6f,subnet-efdf2da5
+  #     pPubStackSubnets: subnet-75b3e85e,subnet-52df7c0f
+  #     pVPCCidr: 172.31.32.0/20
+  #     pLoadBalancerScheme: internet-facing
+  #     pSOAAppCertId: 29b5f0ca-c050-4011-abf8-24228ca2fd06
+  #     pSOAStorageEncrypted: "true"
+  #     pSOAAppKMSID: ec9cf310-ee4e-468d-aa7b-cedbdede13ce
+  #     pSOAAppInstanceType: m5.large
+  #     pSOAAppKeyPairName: genendo-eks
+  #     pBaseAMI: ami-0518bb0e75d3619ca
+  #     pSOAAppASGMin: 1
+  #     pSOAAppASGMax: 2
+  #     pAutoScalingServiceRoleARN: arn:aws:iam::897664914431:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling_soa_dev
   #     pAppName: soa
   #     pAppOwner: oscar
   #     pAppITOwner: Datta
